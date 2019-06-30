@@ -4,14 +4,8 @@ open NUnit.Framework
 open Bio
 open Bio.Week1
 
-type Assert() =
-    static member SequenceEquals (expected : seq<'t>) (actual : seq<'t>) =
-        Assert.AreEqual (Seq.length expected, Seq.length actual)
-        for (c, d) in Seq.zip expected actual do 
-            Assert.AreEqual (c, d)
-
 [<TestFixture>]
-type TestClass () =
+type Week1Tests () =
 
     [<SetUp>]
     member this.Setup () =

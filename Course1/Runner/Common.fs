@@ -21,6 +21,12 @@ module Common =
         let choosei (f : int -> 'T -> option<'U>) =
             Seq.indexed
             >> Seq.choose (fun (i, x) -> f i x)
+
+        let findAllIndexes f = Seq.indexed >> Seq.filter (snd >> f) >> Seq.map fst
+
+        let findAllMinIndexes x =
+            let min = Seq.min x
+            findAllIndexes ((=)min) x
     
     let inline pow ``base`` exp = 
         let mutable x = 1

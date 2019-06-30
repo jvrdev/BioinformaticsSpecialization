@@ -3,6 +3,7 @@
 module Program = 
     [<EntryPoint>]
     let main argv =
-        Week1.runClump2 """C:\Users\Javier\Downloads\E_coli.txt""" 9 500 3
-        //runComputingFrequencies2 """C:\Users\Javier\Downloads\dataset_2994_5.txt"""
+        let output = Week2.runFrequentWordsWithMismatches """C:\Users\Javier\Downloads\dataset_9_7.txt"""
+        //runComputingFrequencies2 
+        printfn "%s" output
         0
