@@ -52,6 +52,38 @@ type Week2Tests () =
         Assert.AreEqual (expectedOutput, output)
 
     [<Test>]
+    member this.TestEquals () =  
+        let expectedOutput = true
+        let a = Genome.ofString "ATA"
+        let b = Genome.ofString "ATA"
+        let output = a.Equals b
+        Assert.AreEqual (expectedOutput, output)
+
+    [<Test>]
+    member this.TestGetHashCode () =
+        let a = Genome.ofString "ATA"
+        let b = Genome.ofString "ATA"
+        let outputA = a.GetHashCode ()
+        let outputB = b.GetHashCode ()
+        Assert.AreEqual (outputA, outputB)
+    
+    [<Test>]
+    member this.TestEquals2 () =  
+        let expectedOutput = false
+        let a = Genome.ofString "ATA"
+        let b = Genome.ofString "ATC"
+        let output = a.Equals b
+        Assert.AreEqual (expectedOutput, output)
+
+    [<Test>]
+    member this.TestGetHashCode2 () =
+        let a = Genome.ofString "ATA"
+        let b = Genome.ofString "ATC"
+        let outputA = a.GetHashCode ()
+        let outputB = b.GetHashCode ()
+        Assert.AreNotEqual (outputA, outputB)
+
+    [<Test>]
     member this.TestNeighbors () =  
         let expectedOutput =
             ["CCG";"TCG";"GCG";"AAG";"ATG";"AGG";"ACA";"ACC";"ACT";"ACG"]
