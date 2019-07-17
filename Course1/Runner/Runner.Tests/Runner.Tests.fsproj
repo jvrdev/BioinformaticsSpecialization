@@ -16,6 +16,7 @@
     <Compile Include="Common.fs" />
     <Compile Include="Week1Tests.fs" />
     <Compile Include="Week2Tests.fs" />
+    <Compile Include="Week3Tests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

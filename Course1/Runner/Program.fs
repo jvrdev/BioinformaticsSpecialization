@@ -3,5 +3,7 @@
 module Program = 
     [<EntryPoint>]
     let main argv =
-        let output = Week2.findOri """C:\Users\Javier\Downloads\Salmonella_enterica.txt"""
+        let output = Week3.runMotifEnumeration """C:\Users\Javier\Downloads\dataset_156_8(1).txt"""
+        //runComputingFrequencies2 
+        printfn "%s" output
         0
