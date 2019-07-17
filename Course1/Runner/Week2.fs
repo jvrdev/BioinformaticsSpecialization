@@ -11,6 +11,11 @@ module Week2 =
             | C -> 'C'
             | G -> 'G'
             | T -> 'T'
+        static member Complement = function
+            | A -> T
+            | C -> G
+            | G -> C
+            | T -> A
         static member ofChar (c : char) =
             match c with
             | 'A' | 'a' -> A
@@ -31,7 +36,7 @@ module Week2 =
             | other -> failwithf "Unexpected int value %d" other
         static member Enumerate  = [ A; C; G; T ]
 
-    [<CustomComparison;CustomEquality>]
+    [<CustomComparison;CustomEquality;StructuredFormatDisplay "Genome {StructuredFormatted}">]
     type Genome = Genome of ArraySegment<Nucleobase>
     with
         interface IComparable<Genome> with
@@ -53,7 +58,8 @@ module Week2 =
         interface IEquatable<Genome> with
             member this.Equals (other : Genome) =
                 compare this other = 0
-        static member ofString (s : string) : Genome =
+        static member ofString (s : string) : Genome = Genome.OfSeq s
+        static member OfSeq (s : seq<char>) : Genome =
             s
             |> Seq.map Nucleobase.ofChar
             |> Seq.toArray
@@ -67,6 +73,8 @@ module Week2 =
             Genome (Seq.append (Seq.singleton n) g |> Seq.toArray |> ArraySegment)
         static member Item (i : int) (Genome g) : Nucleobase =
             g.[i]
+        static member ReverseComplement (Genome g) =
+            Genome (g |> Seq.rev |> Seq.map Nucleobase.Complement |> Seq.toArray |> ArraySegment)
         override this.Equals (other : obj) =
             match other with
             | :? Genome as o -> (this :> IEquatable<Genome>).Equals(o)
@@ -80,6 +88,7 @@ module Week2 =
         member g.Length =
             let (Genome arraySegment) = g
             arraySegment.Count
+        member private g.StructuredFormatted = g.ToString ()
 
     let patternToNumber (pattern : Genome) =
         let mutable a = 0
@@ -145,19 +154,30 @@ module Week2 =
                     else [Genome.Prepend (Genome.Item 0 pattern) suffixNeighbor]
             )
 
-    let frequentWordsWithMismatches (text : Genome) (k : int) (d : int) : Genome[] =
+    let frequentWordsF f (text : Genome) (k : int) (d : int) =
         let n = pow 4 k
         let a = Array.create n 0
         for i = 0 to text.Length - k do
             let pattern = Genome.Slice i k text
-            for neighbor in neighbors pattern d do
+            for neighbor in f pattern d do
                 let index = patternToNumber neighbor
                 a.[index] <- a.[index] + 1
         let max = Array.max a
-        a
-        |> Seq.findAllIndexes ((=)max)
-        |> Seq.map (numberToPattern k)
-        |> Seq.toArray
+        let patterns = 
+            a
+            |> Seq.findAllIndexes ((=)max)
+            |> Seq.map (numberToPattern k)
+            |> Seq.toArray
+        patterns, max
+
+    let frequentWordsWithMismatches =
+        frequentWordsF neighbors
+
+    let frequentWordsWithMismatchesAndReverseComplements =
+        let f genome d =
+            let reverseComplement = Genome.ReverseComplement genome
+            Seq.append (neighbors genome d) (neighbors reverseComplement d)
+        frequentWordsF f
                 
     let runMinSkewPositions f =
         let content = read f |> clean
@@ -202,4 +222,27 @@ module Week2 =
         let k = int fields.[0]
         let d = int fields.[1]
         let output = frequentWordsWithMismatches pattern k d
-        output |> Seq.map string |> format
+        output |> fst |> Seq.map string |> format
+
+    let runFrequentWordsWithMismatchesAndReverseComplement f =
+        let content = System.IO.File.ReadLines f |> Seq.toArray
+        let pattern = Genome.ofString content.[0]
+        let fields = content.[1].Split ' '
+        let k = int fields.[0]
+        let d = int fields.[1]
+        let output = frequentWordsWithMismatchesAndReverseComplements pattern k d
+        output |> fst |> Seq.map string |> format
+
+    let findOri f =
+        let d = 1
+        let L = 500
+        let k = 9
+        let genome = System.IO.File.ReadLines f |> Seq.skip 1 |> Seq.collect id |> Genome.OfSeq
+        let minPositions = minSkewPositions genome
+        printfn "Min positions found at %A" minPositions
+        let g minPosition = 
+            let window = Genome.Slice minPosition L genome
+            let words, freq = frequentWordsWithMismatchesAndReverseComplements window k d
+            minPosition, words, freq
+        let frequentWords = minPositions |> Seq.map g
+        printfn "Frequent words found at %A" frequentWords

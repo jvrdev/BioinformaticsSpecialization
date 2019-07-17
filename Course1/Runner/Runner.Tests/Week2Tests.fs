@@ -71,3 +71,14 @@ type Week2Tests () =
         let d = 1
         let output = frequentWordsWithMismatches pattern k d
         Assert.AreEqual (Set.ofArray expectedOutput, Set.ofArray output)
+
+    [<Test>]
+    member this.TestFrequentWordsWithMismatchesAndReverseComplements () =
+        let expectedOutput = 
+            [|"ATGT";"ACAT"|]
+            |> Array.map Genome.ofString
+        let pattern = Genome.ofString "ACGTTGCATGTCGCATGATGCATGAGAGCT"
+        let k = 4
+        let d = 1
+        let output = frequentWordsWithMismatchesAndReverseComplements pattern k d
+        Assert.AreEqual (Set.ofArray expectedOutput, Set.ofArray output)
