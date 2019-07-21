@@ -3,15 +3,6 @@
 open System
 
 module Week2 =
-        static member Complement = function
-            | A -> T
-            | C -> G
-            | G -> C
-            | T -> A
-        static member OfSeq (s : seq<char>) : Genome =
-        static member ReverseComplement (Genome g) =
-            Genome (g |> Seq.rev |> Seq.map Nucleobase.Complement |> Seq.toArray |> ArraySegment)
-        member private g.StructuredFormatted = g.ToString ()
     let patternToNumber (pattern : Genome) =
         let mutable a = 0
         for i = 0 to pattern.Length - 1 do
@@ -103,43 +94,43 @@ module Week2 =
                 
     let runMinSkewPositions f =
         let content = read f |> clean
-        let genome = Genome.ofString content
+        let genome = Genome.OfString content
         let minPositions = minSkewPositions genome
         minPositions |> Seq.map string |> format
 
     let runHammingDistance f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let a = Genome.ofString content.[0]
-        let b = Genome.ofString content.[1]
+        let a = Genome.OfString content.[0]
+        let b = Genome.OfString content.[1]
         let distance = hammingDistance a b
         string distance
 
     let runApproximatePatternMatch f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
-        let genome = Genome.ofString content.[1]
+        let pattern = Genome.OfString content.[0]
+        let genome = Genome.OfString content.[1]
         let d = int content.[2]
         let output = approximatePatternMatch pattern genome d
         output |> Seq.map string |> format
 
     let runCountD f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
-        let genome = Genome.ofString content.[1]
+        let pattern = Genome.OfString content.[0]
+        let genome = Genome.OfString content.[1]
         let d = int content.[2]
         let output = countD pattern genome d
         output |> string
 
     let runNeighbors f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
+        let pattern = Genome.OfString content.[0]
         let d = int content.[1]
         let output = neighbors pattern d
         output |> Seq.map string |> format
 
     let runFrequentWordsWithMismatches f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
+        let pattern = Genome.OfString content.[0]
         let fields = content.[1].Split ' '
         let k = int fields.[0]
         let d = int fields.[1]
@@ -148,7 +139,7 @@ module Week2 =
 
     let runFrequentWordsWithMismatchesAndReverseComplement f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
+        let pattern = Genome.OfString content.[0]
         let fields = content.[1].Split ' '
         let k = int fields.[0]
         let d = int fields.[1]
@@ -159,7 +150,7 @@ module Week2 =
         let d = 1
         let L = 500
         let k = 9
-        let genome = System.IO.File.ReadLines f |> Seq.skip 1 |> Seq.collect id |> Genome.OfSeq
+        let genome = System.IO.File.ReadLines f |> Seq.skip 1 |> Seq.collect id |> Genome.OfCharSeq
         let minPositions = minSkewPositions genome
         printfn "Min positions found at %A" minPositions
         let g minPosition = 
