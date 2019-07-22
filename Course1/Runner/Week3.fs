@@ -65,6 +65,9 @@ module Week3 =
         }
         |> Seq.sum
 
+    //let medianString (k : int) (gs : seq<Genome>) : Genome =
+    //    let kmers = Genome.Enumerate k
+
     let runMotifEnumeration f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
         let fields = content.[0].Split ' '

@@ -76,8 +76,13 @@ type Week3Tests () =
 
     [<Test>]
     member this.MatrixEntropy () =
-        let expectedOutput = 0.0
+        let expectedOutput = 9.9162900053569718
         let input = nMatrix
 
         let output = motifEntropy input
         Assert.AreEqual (expectedOutput, output)
+
+    [<Test>]
+    member this.GenomeEnumerate () =
+        let output = Genome.Enumerate 3
+        Assert.IsNotNull output

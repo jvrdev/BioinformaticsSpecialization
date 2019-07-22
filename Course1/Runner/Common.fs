@@ -89,14 +89,17 @@ module Common =
         interface IEquatable<Genome> with
             member this.Equals (other : Genome) =
                 compare this other = 0
+        static member OfSeq (s : seq<Nucleobase>) =
+            s
+            |> Seq.toArray
+            |> ArraySegment
+            |> Genome
         static member OfString (s : string) : Genome =
             Genome.OfCharSeq s
         static member OfCharSeq (s : seq<char>) : Genome =
             s
             |> Seq.map Nucleobase.ofChar
-            |> Seq.toArray
-            |> ArraySegment
-            |> Genome
+            |> Genome.OfSeq
         static member ToSeq (Genome s) : seq<Nucleobase> =
             s :> seq<Nucleobase>
         static member Slice (index : int) (count : int) (Genome g) : Genome =
@@ -111,6 +114,21 @@ module Common =
             Genome (g |> Seq.rev |> Seq.map Nucleobase.Complement |> Seq.toArray |> ArraySegment)
         static member Kmers (k : int) (g : Genome) : seq<Genome> =
             seq { for i = 0 to g.Length - k do yield Genome.Slice i k g }
+        static member Enumerate (k : int) =
+            let rec f (acc : list<list<Nucleobase>>) i =
+                if i = k then acc
+                elif i = 0 then f (Nucleobase.Enumerate |> List.map List.singleton) 1
+                else 
+                    let accPrime = 
+                        acc 
+                        |> List.collect (
+                            fun a -> 
+                                Nucleobase.Enumerate |> List.map (
+                                    fun nucleobase -> nucleobase :: a))
+                    f accPrime (i + 1)
+            f [] 0
+            |> List.map Genome.OfSeq
+
         override this.Equals (other : obj) =
             match other with
             | :? Genome as o -> (this :> IEquatable<Genome>).Equals(o)
