@@ -5,7 +5,7 @@ open System
 module Week3 =
     let genomeContainsPatternWithAtMostDMismatches (d : int) (pattern : Genome) (dna : Genome) =
         Genome.Kmers pattern.Length dna
-        |> Seq.map (fun kmer -> Week2.hammingDistance kmer pattern)
+        |> Seq.map (fun kmer -> hammingDistance kmer pattern)
         |> Seq.exists (fun distance -> distance <= d)
 
     let motifEnumeration (k : int) (d : int) (dnas : seq<Genome>) : seq<Genome> =
@@ -25,7 +25,9 @@ module Week3 =
                 if rows |> Array.forall (fun r -> r.Length = rowLength) |> not then
                     invalidArg "rows" "Not all rows are of the same length"
                 else MotifMatrix rows
+        static member OfRowSeq = Seq.toArray >> MotifMatrix.MotifMatrix
         static member ToRows (MotifMatrix rows) = rows
+        static member MapRows f = MotifMatrix.ToRows >> Seq.map f >> MotifMatrix.OfRowSeq
         member x.ColCount = 
             match MotifMatrix.ToRows x with
             | [||] -> 0
@@ -50,6 +52,10 @@ module Week3 =
                 sums.[j] <- sums.[j] + float m.[i, j]
         Array2D.mapi (fun i j x -> (float x) / sums.[j]) m
 
+    let motifDistance (pattern : Genome) (m : MotifMatrix) : int =
+        MotifMatrix.ToRows m
+        |> Seq.sumBy (patternDistance pattern)
+
     let entropy =
         let entropyLog = function 
             | 0.0 -> 0.0
@@ -65,15 +71,53 @@ module Week3 =
         }
         |> Seq.sum
 
-    //let medianString (k : int) (gs : seq<Genome>) : Genome =
-    //    let kmers = Genome.Enumerate k
+    let medianString (k : int) (gs : seq<Genome>) : Genome =
+        let m = MotifMatrix.OfRowSeq gs
+        Genome.Enumerate k
+        |> Seq.minBy (fun pattern -> motifDistance pattern m)
+
+    let kmerProbability (profile : float[,]) (kmer : Genome) : float = 
+        let k = kmer.Length
+        if profile.GetLength 0 <> 4 then invalidArg "profile" "Profile is expected to have 4 rows"
+        elif profile.GetLength 1 <> k then invalidArg "profile" "Profile column count is expected to match length of k-mer"
+        else
+            seq {
+                for j = 0 to k - 1 do
+                    let i = Nucleobase.ToInt (Genome.Item j kmer)
+                    yield profile.[i, j]
+            }
+            |> Seq.fold (*) 1.0
+
+    let profileMostProbableKmer (text : Genome) (k : int) (profile : float[,]) : Genome =
+        Genome.Kmers k text
+        |> Seq.maxBy (kmerProbability profile)
+
+    let greedyMotifSearch (k : int) (t : int) (m : MotifMatrix) : seq<Genome> =
+        let bestMotifs = MotifMatrix.MapRows (Genome.Slice 0 k) m
+        bestMotifs
+        |> MotifMatrix.ToRows
+        |> Seq.ofArray
 
     let runMotifEnumeration f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
         let fields = content.[0].Split ' '
         let k = int fields.[0]
         let d = int fields.[1]
-        let dnas = content |> Seq.skip 1 |> Seq.filter System.String.IsNullOrWhiteSpace |> Seq.map Genome.OfString
+        let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.OfString
         let output = motifEnumeration k d dnas
         output |> Seq.map string |> format
         
+    let runMedianString f =
+        let content = System.IO.File.ReadLines f |> Seq.toArray
+        let k = int content.[0]
+        let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.OfString
+        let output = medianString k dnas
+        output |> string
+
+    let runProfileMostProbableKmer f =
+        let content = System.IO.File.ReadLines f |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.toArray
+        let dna = content.[0] |> Genome.OfString
+        let k = int content.[1]
+        let profile = content.[2 .. 5] |> Seq.map (fun s -> s.Split(' ') |> Seq.map float) |> array2D
+        let output = profileMostProbableKmer dna k profile
+        output |> string

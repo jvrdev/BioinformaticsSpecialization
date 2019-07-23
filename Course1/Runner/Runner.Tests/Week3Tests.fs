@@ -86,3 +86,32 @@ type Week3Tests () =
     member this.GenomeEnumerate () =
         let output = Genome.Enumerate 3
         Assert.IsNotNull output
+
+    [<Test>]
+    member this.MedianString () =
+        let dna =
+            [
+                "AAATTGACGCAT"
+                "GACGACCACGTT"
+                "CGTCAGCGCCTG"
+                "GCTGAGCACCGG"
+                "AGTTCGGGACAG"
+            ]
+            |> Seq.map Genome.OfString
+        let output = Week3.medianString 3 dna
+        Assert.AreEqual (Genome.OfString "GAC", output)
+
+    [<Test>]
+    member this.ProfileMostProbableKmer () =
+        let text = Genome.OfString "ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT"
+        let k = 5
+        let profile =
+            [
+                [0.2; 0.2; 0.3; 0.2; 0.3]
+                [0.4; 0.3; 0.1; 0.5; 0.1]
+                [0.3; 0.3; 0.5; 0.2; 0.4]
+                [0.1; 0.2; 0.1; 0.1; 0.2]
+            ]
+            |> array2D
+        let output = profileMostProbableKmer text k profile
+        Assert.AreEqual (Genome.OfString "CCGAG", output)

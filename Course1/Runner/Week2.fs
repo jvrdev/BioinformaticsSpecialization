@@ -30,10 +30,6 @@ module Week2 =
         let skews = skews g
         Seq.findAllMinIndexes skews |> Seq.toArray
 
-    let hammingDistance (Genome a) (Genome b) =
-        Seq.zip a b
-        |> Seq.sumBy (fun (a, b) -> if a = b then 0 else 1)
-
     let mkApproximateMatchArray (pattern : Genome) (text: Genome) (d : int) =
         let k = pattern.Length
         seq { 

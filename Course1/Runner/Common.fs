@@ -144,3 +144,12 @@ module Common =
             let (Genome arraySegment) = g
             arraySegment.Count
         member private g.StructuredFormatted = g.ToString ()
+
+    let hammingDistance (Genome a) (Genome b) =
+        Seq.zip a b
+        |> Seq.sumBy (fun (a, b) -> if a = b then 0 else 1)
+
+    let patternDistance (pattern : Genome) (genome : Genome) : int =
+        Genome.Kmers pattern.Length genome
+        |> Seq.map (hammingDistance pattern)
+        |> Seq.min
