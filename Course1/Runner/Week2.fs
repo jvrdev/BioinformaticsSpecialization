@@ -30,10 +30,6 @@ module Week2 =
         let skews = skews g
         Seq.findAllMinIndexes skews |> Seq.toArray
 
-    let hammingDistance (Genome a) (Genome b) =
-        Seq.zip a b
-        |> Seq.sumBy (fun (a, b) -> if a = b then 0 else 1)
-
     let mkApproximateMatchArray (pattern : Genome) (text: Genome) (d : int) =
         let k = pattern.Length
         seq { 
@@ -67,61 +63,95 @@ module Week2 =
                     else [Genome.Prepend (Genome.Item 0 pattern) suffixNeighbor]
             )
 
-    let frequentWordsWithMismatches (text : Genome) (k : int) (d : int) : Genome[] =
+    let frequentWordsF f (text : Genome) (k : int) (d : int) =
         let n = pow 4 k
         let a = Array.create n 0
         for i = 0 to text.Length - k do
             let pattern = Genome.Slice i k text
-            for neighbor in neighbors pattern d do
+            for neighbor in f pattern d do
                 let index = patternToNumber neighbor
                 a.[index] <- a.[index] + 1
         let max = Array.max a
-        a
-        |> Seq.findAllIndexes ((=)max)
-        |> Seq.map (numberToPattern k)
-        |> Seq.toArray
+        let patterns = 
+            a
+            |> Seq.findAllIndexes ((=)max)
+            |> Seq.map (numberToPattern k)
+            |> Seq.toArray
+        patterns, max
+
+    let frequentWordsWithMismatches =
+        frequentWordsF neighbors
+
+    let frequentWordsWithMismatchesAndReverseComplements =
+        let f genome d =
+            let reverseComplement = Genome.ReverseComplement genome
+            Seq.append (neighbors genome d) (neighbors reverseComplement d)
+        frequentWordsF f
                 
     let runMinSkewPositions f =
         let content = read f |> clean
-        let genome = Genome.ofString content
+        let genome = Genome.OfString content
         let minPositions = minSkewPositions genome
         minPositions |> Seq.map string |> format
 
     let runHammingDistance f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let a = Genome.ofString content.[0]
-        let b = Genome.ofString content.[1]
+        let a = Genome.OfString content.[0]
+        let b = Genome.OfString content.[1]
         let distance = hammingDistance a b
         string distance
 
     let runApproximatePatternMatch f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
-        let genome = Genome.ofString content.[1]
+        let pattern = Genome.OfString content.[0]
+        let genome = Genome.OfString content.[1]
         let d = int content.[2]
         let output = approximatePatternMatch pattern genome d
         output |> Seq.map string |> format
 
     let runCountD f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
-        let genome = Genome.ofString content.[1]
+        let pattern = Genome.OfString content.[0]
+        let genome = Genome.OfString content.[1]
         let d = int content.[2]
         let output = countD pattern genome d
         output |> string
 
     let runNeighbors f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
+        let pattern = Genome.OfString content.[0]
         let d = int content.[1]
         let output = neighbors pattern d
         output |> Seq.map string |> format
 
     let runFrequentWordsWithMismatches f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
-        let pattern = Genome.ofString content.[0]
+        let pattern = Genome.OfString content.[0]
         let fields = content.[1].Split ' '
         let k = int fields.[0]
         let d = int fields.[1]
         let output = frequentWordsWithMismatches pattern k d
-        output |> Seq.map string |> format
+        output |> fst |> Seq.map string |> format
+
+    let runFrequentWordsWithMismatchesAndReverseComplement f =
+        let content = System.IO.File.ReadLines f |> Seq.toArray
+        let pattern = Genome.OfString content.[0]
+        let fields = content.[1].Split ' '
+        let k = int fields.[0]
+        let d = int fields.[1]
+        let output = frequentWordsWithMismatchesAndReverseComplements pattern k d
+        output |> fst |> Seq.map string |> format
+
+    let findOri f =
+        let d = 1
+        let L = 500
+        let k = 9
+        let genome = System.IO.File.ReadLines f |> Seq.skip 1 |> Seq.collect id |> Genome.OfCharSeq
+        let minPositions = minSkewPositions genome
+        printfn "Min positions found at %A" minPositions
+        let g minPosition = 
+            let window = Genome.Slice minPosition L genome
+            let words, freq = frequentWordsWithMismatchesAndReverseComplements window k d
+            minPosition, words, freq
+        let frequentWords = minPositions |> Seq.map g
+        printfn "Frequent words found at %A" frequentWords

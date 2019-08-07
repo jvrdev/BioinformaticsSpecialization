@@ -60,9 +60,14 @@ module Common =
             | 2 -> G
             | 3 -> T
             | other -> failwithf "Unexpected int value %d" other
+        static member Complement = function
+            | A -> T
+            | C -> G
+            | G -> C
+            | T -> A
         static member Enumerate  = [ A; C; G; T ]
 
-    [<CustomComparison;CustomEquality>]
+    [<CustomComparison;CustomEquality;StructuredFormatDisplay "Genome {StructuredFormatted}">]
     type Genome = Genome of ArraySegment<Nucleobase>
     with
         interface IComparable<Genome> with
@@ -84,12 +89,19 @@ module Common =
         interface IEquatable<Genome> with
             member this.Equals (other : Genome) =
                 compare this other = 0
-        static member ofString (s : string) : Genome =
+        static member OfSeq (s : seq<Nucleobase>) =
             s
-            |> Seq.map Nucleobase.ofChar
             |> Seq.toArray
             |> ArraySegment
             |> Genome
+        static member OfString (s : string) : Genome =
+            Genome.OfCharSeq s
+        static member OfCharSeq (s : seq<char>) : Genome =
+            s
+            |> Seq.map Nucleobase.ofChar
+            |> Genome.OfSeq
+        static member ToSeq (Genome s) : seq<Nucleobase> =
+            s :> seq<Nucleobase>
         static member Slice (index : int) (count : int) (Genome g) : Genome =
             Genome (g.Slice (index, count))
         static member Suffix (Genome g) : Genome =
@@ -98,8 +110,25 @@ module Common =
             Genome (Seq.append (Seq.singleton n) g |> Seq.toArray |> ArraySegment)
         static member Item (i : int) (Genome g) : Nucleobase =
             g.[i]
+        static member ReverseComplement (Genome g) =
+            Genome (g |> Seq.rev |> Seq.map Nucleobase.Complement |> Seq.toArray |> ArraySegment)
         static member Kmers (k : int) (g : Genome) : seq<Genome> =
             seq { for i = 0 to g.Length - k do yield Genome.Slice i k g }
+        static member Enumerate (k : int) =
+            let rec f (acc : list<list<Nucleobase>>) i =
+                if i = k then acc
+                elif i = 0 then f (Nucleobase.Enumerate |> List.map List.singleton) 1
+                else 
+                    let accPrime = 
+                        acc 
+                        |> List.collect (
+                            fun a -> 
+                                Nucleobase.Enumerate |> List.map (
+                                    fun nucleobase -> nucleobase :: a))
+                    f accPrime (i + 1)
+            f [] 0
+            |> List.map Genome.OfSeq
+
         override this.Equals (other : obj) =
             match other with
             | :? Genome as o -> (this :> IEquatable<Genome>).Equals(o)
@@ -114,3 +143,13 @@ module Common =
         member g.Length =
             let (Genome arraySegment) = g
             arraySegment.Count
+        member private g.StructuredFormatted = g.ToString ()
+
+    let hammingDistance (Genome a) (Genome b) =
+        Seq.zip a b
+        |> Seq.sumBy (fun (a, b) -> if a = b then 0 else 1)
+
+    let patternDistance (pattern : Genome) (genome : Genome) : int =
+        Genome.Kmers pattern.Length genome
+        |> Seq.map (hammingDistance pattern)
+        |> Seq.min
