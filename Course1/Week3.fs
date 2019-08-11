@@ -45,6 +45,8 @@ module Week3 =
                 count.[i, j] <- count.[i, j] + 1
         count
 
+    let motifPseudoCount = motifCount >> Array2D.map ((+)1)
+
     let motifProfile (m : int[,]) : float[,] =
         let sums = Array.create (m.GetLength 1) 0.0
         for i = 0 to m.GetLength 0 - 1 do
@@ -105,13 +107,13 @@ module Week3 =
         Genome.Kmers k text
         |> Seq.maxBy (kmerProbability profile)
 
-    let greedyMotifSearch (k : int) (t : int) (dnas : Genome[]) : seq<Genome> =
+    let greedyMotifSearchWithCount count (k : int) (t : int) (dnas : Genome[]) : seq<Genome> =
         let bestMotifs0 = dnas |> Seq.map (Genome.Slice 0 k)
-        let kmers = dnas |> Seq.head |> Genome.Kmers k
+        let kmers = Genome.Kmers k dnas.[0]
         // generates the motifs for kmer motif in the first string from dnas
         let mkMotifs motif =
             let folder motifs i =
-                let profile = Seq.rev motifs |> MotifMatrix.OfRowSeq |> motifCount |> motifProfile
+                let profile = Seq.rev motifs |> MotifMatrix.OfRowSeq |> count |> motifProfile
                 profileMostProbableKmer dnas.[i] k profile :: motifs
             seq { 1 .. t - 1 }
             |> Seq.fold folder [motif]
@@ -122,6 +124,9 @@ module Week3 =
         |> Seq.minBy motifScore
         |> MotifMatrix.ToRows
         |> Seq.ofArray
+
+    let greedyMotifSearch = greedyMotifSearchWithCount motifCount
+    let greedyMotifSearchWithPseudoCount = greedyMotifSearchWithCount motifPseudoCount 
 
     let runMotifEnumeration f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
@@ -147,11 +152,21 @@ module Week3 =
         let output = profileMostProbableKmer dna k profile
         output |> string
 
-    let runGreedyMotifSearch f =
+    let runGreedyMotifSearchAny search f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
         let fields = content.[0].Split ' '
         let k = int fields.[0]
         let t = int fields.[1]
         let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.OfString |> Seq.toArray
-        let output = greedyMotifSearch k t dnas
+        let output = search k t dnas
         output |> Seq.map string |> format
+
+    let runGreedyMotifSearch = runGreedyMotifSearchAny greedyMotifSearch
+    let runGreedyMotifSearchWithPseudoCounts = runGreedyMotifSearchAny greedyMotifSearchWithPseudoCount
+
+    let runMotifDistance f =
+        let content = System.IO.File.ReadLines f |> Seq.toArray
+        let pattern = Genome.OfString content.[0]
+        let dnas = content.[1].Split ' ' |> Seq.map Genome.OfString |> MotifMatrix.OfRowSeq
+        let output = motifDistance pattern dnas
+        output |> string

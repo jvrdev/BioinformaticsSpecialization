@@ -138,4 +138,42 @@ type Week3Tests () =
             |> Array.map Genome.OfString
         let output = greedyMotifSearch 3 5 dnaLines
         Assert.SequenceEquals expectedOutput output
+
+    [<Test>]
+    member this.GreedyMotifSearchWithPseudoCount () =
+        let expectedOutput =
+            [|
+                "TTC"
+                "ATC"
+                "TTC"
+                "ATC"
+                "TTC"
+            |] 
+            |> Array.map Genome.OfString
+        let dnaLines = 
+            [|
+                "GGCGTTCAGGCA"
+                "AAGAATCAGTCA"
+                "CAAGGAGTTCGC"
+                "CACGTCAATCAC"
+                "CAATAATATTCG"
+            |]
+            |> Array.map Genome.OfString
+        let output = greedyMotifSearchWithPseudoCount 3 5 dnaLines
+        Assert.SequenceEquals expectedOutput output
  
+    [<Test>]
+    member this.DistanceBetweenPatternAndStrings () =
+        let pattern = "AAA" |> Genome.OfString
+        let dnaLines = 
+            [|
+                "TTACCTTAAC"
+                "GATATCTGTC"
+                "ACGGCGTTCG"
+                "CCCTAAAGAG"
+                "CGTCAGAGGT"
+            |]
+            |> Array.map Genome.OfString
+            |> MotifMatrix.OfRows
+        let output = motifDistance pattern dnaLines
+        Assert.AreEqual (5, output)
