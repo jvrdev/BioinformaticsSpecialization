@@ -118,7 +118,24 @@ type Week3Tests () =
         
     [<Test>]
     member this.GreedyMotifSearch () =
-        let expectedOutput = [|"CAG";"CAG";"CAA";"CAA";"CAA"|] |> Array.map Genome.ofString
-        let dnaLines = [|"GGCGTTCAGGCA";"CAAGGAGTTCGC";"CACGTCAATCAC";"CAATAATATTCG"|] |> Array.map Genome.ofString
+        let expectedOutput =
+            [|
+                "CAG"
+                "CAG"
+                "CAA"
+                "CAA"
+                "CAA"
+            |] 
+            |> Array.map Genome.OfString
+        let dnaLines = 
+            [|
+                "GGCGTTCAGGCA"
+                "AAGAATCAGTCA"
+                "CAAGGAGTTCGC"
+                "CACGTCAATCAC"
+                "CAATAATATTCG"
+            |]
+            |> Array.map Genome.OfString
         let output = greedyMotifSearch 3 5 dnaLines
         Assert.SequenceEquals expectedOutput output
+ 

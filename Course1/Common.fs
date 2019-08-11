@@ -17,6 +17,25 @@ module Common =
         let toReadOnlySpan (s : string) = 
             ReadOnlySpan (s.ToCharArray ())
     
+    module Array2D =
+        let columnWise (m : 't[,]) =
+            seq {
+                for j in 0 .. m.GetLength 1 - 1 do
+                    yield seq {
+                        for i in 0 .. m.GetLength 0 - 1 do
+                            yield m.[i, j]
+                    }
+            }
+
+        let rowWise (m : 't[,]) =
+            seq {
+                for i in 0 .. m.GetLength 0 - 1 do
+                    yield seq {
+                        for j in 0 .. m.GetLength 1 - 1 do
+                            yield m.[i, j] 
+                    }
+            }
+
     module Seq =
         let choosei (f : int -> 'T -> option<'U>) =
             Seq.indexed

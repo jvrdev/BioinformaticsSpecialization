@@ -52,6 +52,19 @@ module Week3 =
                 sums.[j] <- sums.[j] + float m.[i, j]
         Array2D.mapi (fun i j x -> (float x) / sums.[j]) m
 
+    let motifConsensus =
+        Array2D.columnWise
+        >> Seq.map (Seq.indexed >> Seq.maxBy snd >> fst >> Nucleobase.OfInt)
+        >> Genome.OfSeq
+
+    /// Returns a score for a motif matrix measured as the sum of the distance
+    /// of all rows with the matrix' consensus genome
+    let motifScore (m : MotifMatrix) : int =
+        let count = motifCount m
+        let profile = motifProfile count
+        let consensus = motifConsensus profile
+        MotifMatrix.ToRows m |> Seq.sumBy (hammingDistance consensus)
+
     let motifDistance (pattern : Genome) (m : MotifMatrix) : int =
         MotifMatrix.ToRows m
         |> Seq.sumBy (patternDistance pattern)
@@ -92,9 +105,21 @@ module Week3 =
         Genome.Kmers k text
         |> Seq.maxBy (kmerProbability profile)
 
-    let greedyMotifSearch (k : int) (t : int) (m : MotifMatrix) : seq<Genome> =
-        let bestMotifs = MotifMatrix.MapRows (Genome.Slice 0 k) m
-        bestMotifs
+    let greedyMotifSearch (k : int) (t : int) (dnas : Genome[]) : seq<Genome> =
+        let bestMotifs0 = dnas |> Seq.map (Genome.Slice 0 k)
+        let kmers = dnas |> Seq.head |> Genome.Kmers k
+        // generates the motifs for kmer motif in the first string from dnas
+        let mkMotifs motif =
+            let folder motifs i =
+                let profile = Seq.rev motifs |> MotifMatrix.OfRowSeq |> motifCount |> motifProfile
+                profileMostProbableKmer dnas.[i] k profile :: motifs
+            seq { 1 .. t - 1 }
+            |> Seq.fold folder [motif]
+            |> Seq.rev
+            |> MotifMatrix.OfRowSeq
+        [ MotifMatrix.OfRowSeq bestMotifs0 ]
+        |> Seq.append (kmers |> Seq.map mkMotifs)
+        |> Seq.minBy motifScore
         |> MotifMatrix.ToRows
         |> Seq.ofArray
 
@@ -121,23 +146,12 @@ module Week3 =
         let profile = content.[2 .. 5] |> Seq.map (fun s -> s.Split(' ') |> Seq.map float) |> array2D
         let output = profileMostProbableKmer dna k profile
         output |> string
-        
-    let greedyMotifSearch (k : int) (t : int) (dnas : seq<Genome>) : seq<Genome> =
-        let bestMotifs0 = dnas |> Seq.map (Genome.Slice 0 k) |> Seq.toArray
-        let kmers = dnas |> Seq.head |> Genome.Kmers k
-        let folder bestMotifs motif =
-            let motifi i = []
-            let motifs = Array.init t motifi
-            if motifScore motifs < motifScore bestMotifs
-            then motifs
-            else bestMotifs
-        kmers |> Seq.fold folder bestMotifs0 
 
     let runGreedyMotifSearch f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
         let fields = content.[0].Split ' '
         let k = int fields.[0]
         let t = int fields.[1]
-        let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.ofString
+        let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.OfString |> Seq.toArray
         let output = greedyMotifSearch k t dnas
         output |> Seq.map string |> format
