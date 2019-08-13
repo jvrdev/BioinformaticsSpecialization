@@ -10,6 +10,7 @@
     <Compile Include="Week1.fs" />
     <Compile Include="Week2.fs" />
     <Compile Include="Week3.fs" />
+    <Compile Include="Week4.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
