@@ -8,7 +8,7 @@ module Common =
     let read = File.ReadAllText
     let writeToResultsFile output = File.WriteAllText ("result.txt", output, System.Text.Encoding.ASCII)
     let format x = String.concat " " x
-    
+
     module String = 
         let rev (s : string) =
             let a = s.ToCharArray()
