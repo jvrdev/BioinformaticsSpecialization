@@ -3,7 +3,7 @@
 module Program = 
     [<EntryPoint>]
     let main argv =
-        let output = Week4.runRandomizedMotifSearch """C:\Users\Javier\Downloads\dataset_161_5(1).txt"""
+        let output = Week4.runGibbsSampler """C:\Users\Javier\Downloads\dataset_163_4(2).txt"""
         //runComputingFrequencies2 
         printfn "%s" output
         0
