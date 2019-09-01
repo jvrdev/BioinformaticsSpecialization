@@ -20,7 +20,7 @@ module Week4 =
         let score0 = motifScore (motifs0 |> MotifMatrix.OfRows)
         let rec improveMotifs (motifs, score) =
             let profile = motifs |> MotifMatrix.OfRows |> motifPseudoCount |> motifProfile
-            let motifs' = motifsFromMostProbableKmer k profile dnas |> Seq.toArray
+            let motifs' = motifsFromMostProbableKmer k profile dnas
             let score' = motifScore (motifs' |> MotifMatrix.OfRows)
             if score' < score
             then improveMotifs (motifs', score')
@@ -74,12 +74,11 @@ module Week4 =
                     |> motifProfile
                 let motifsNext =
                     motifs
-                    |> Seq.mapi (
+                    |> Array.mapi (
                         fun j x ->
                             if j <> i
                             then x
                             else profileRandomlyGeneratedKmerInTheIthSequence k profile (dnas |> Seq.item i))
-                    |> Seq.toArray
                 let scoreNext = motifScore (motifsNext |> MotifMatrix.OfRows)
                 let bestMotifsNext, bestScoreNext = 
                     if scoreNext < bestScore
@@ -88,14 +87,12 @@ module Week4 =
                 improveMotifs (motifsNext, bestMotifsNext, bestScoreNext) (repeat - 1)
         improveMotifs (motifs0, motifs0, score0) n
 
-    let gibbsSampler runCount (k : int) (t : int) (n : int) (dnas : Genome[]) : seq<Genome> =
+    let gibbsSampler runCount (k : int) (t : int) (n : int) (dnas : Genome[]) : Genome[] * int =
         if t <> dnas.Length then failwith "t does not match dnas count"
         Seq.replicate runCount ()
         |> Array.ofSeq
-        |> Array.Parallel.map (fun () -> gibbsSamplerRun (randomizedMotifSearch (runCount / 3) k t dnas |> Seq.toArray) k t n dnas)
+        |> Array.Parallel.map (fun () -> gibbsSamplerRun (randomizedMotifSearch 30 k t dnas |> Seq.toArray) k t n dnas)
         |> Seq.minBy snd
-        |> fst
-        |> Seq.ofArray
 
     let runMotifSearchAny search f =
         let content = System.IO.File.ReadLines f |> Seq.toArray
@@ -115,5 +112,5 @@ module Week4 =
         let t = int fields.[1]
         let n = int fields.[2]
         let dnas = content |> Seq.skip 1 |> Seq.filter (not << System.String.IsNullOrWhiteSpace) |> Seq.map Genome.OfString |> Seq.toArray
-        let output = gibbsSampler 100 k t n dnas
-        output |> Seq.map string |> format
+        let output, score = gibbsSampler 20 k t n dnas
+        output |> Seq.map string |> Seq.append [sprintf "Score:%d" score ] |> format2

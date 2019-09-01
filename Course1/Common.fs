@@ -8,6 +8,7 @@ module Common =
     let read = File.ReadAllText
     let writeToResultsFile output = File.WriteAllText ("result.txt", output, System.Text.Encoding.ASCII)
     let format x = String.concat " " x
+    let format2 x = String.concat System.Environment.NewLine x
 
     module String = 
         let rev (s : string) =
@@ -228,8 +229,8 @@ module Common =
         Genome.Kmers k text
         |> Seq.maxBy (kmerProbability profile)
 
-    let motifsFromMostProbableKmer k (profile : float [,]) (dnas : seq<Genome>) : seq<Genome> =
-        dnas |> Seq.map (fun dna -> profileMostProbableKmer dna k profile)
+    let motifsFromMostProbableKmer k (profile : float [,]) (dnas : Genome[]) : Genome[] =
+        dnas |> Array.map (fun dna -> profileMostProbableKmer dna k profile)
 
     let motifConsensus =
         Array2D.columnWise
