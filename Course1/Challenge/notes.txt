@@ -1,0 +1,101 @@
+MTB Latency
+
+187
+141
+117
+162
+156
+199
+139
+202
+175
+161
+180
+169
+174
+120
+161
+198
+214
+157
+159
+
+TTCGTGACCGACGTCCCCAG
+TTGGGGACTTCCGGCCCTAA
+GCCGGGACTTCAGGCCCTAT
+CATGGGACTTTCGGCCCTGT
+GAGGGGACTTTTGGCCACCG
+CCAGGGACCTAATTCCATAT
+TTGAGGACCTTCGGCCCCAC
+CTGGGGACCGAAGTCCCCGG
+TTAGGGACCATCGCCTCCTG
+TGGATGACTTACGGCCCTGA
+TTGGGGACTAAAGCCTCATG
+TCGGGGACTTCTGTCCCTAG
+TTGGGGACCATTGACCCTGT
+TTGAGGACCTAAGCCCGTTG
+CACGGGTCAAACGACCCTAG
+GGCGGGACGTAAGTCCCTAA
+GAAGTGACGAAAGACCCCAG
+CGGAGGACCTTTGGCCCTGC
+GTGGGGACCAACGCCCCTGG
+
+---
+
+57
+139
+107
+172
+114
+136
+159
+143
+155
+186
+178
+200
+118
+137
+173
+201
+160
+62
+216
+165
+45
+204
+
+---
+
+W-AlignACE is not available, 404.
+
+---  
+
+The 2 algorithms I could run produced different motifs.
+
+At the same time there are some important similarities if you shift the second one a couple of positions to the right. In that case, most of the low entropy positions match! ???GGG?C????G?CCC???
+
+---
+
+20.
+
+Very similar, most important difference is just an offset of one element.
+
+---
+
+
+It depends, small motifs will run faster, so you can run end up finding your result fast by favoring smaller lengths.
+
+On the other side too small motif lengths can be statistically irrelevant.
+
+---
+
+In order to generate typical DNA strings of the same length that are typical to a collection of DNA strings I would generate a weighted dice  following the probabilities of the 4 bases within those DNA strings.
+
+---
+
+The logo from upstream25 is not similar with the one from upstream250.
+
+The logo from upstream100 is similar to the one from upstream250, but apparently not as similar as the ones from bigger upstream regions.
+
+The logos for upstream500 upstream1000 are very similar between themselves but also to upstream250.
