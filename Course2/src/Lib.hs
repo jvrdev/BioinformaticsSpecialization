@@ -4,6 +4,7 @@ module Lib
     , kmers
     , spelledKmersToGenome
     , runKmersOnFile
+    , runSpelledKmersToGenome
     ) where
 
 import qualified Data.Text as T
@@ -39,6 +40,13 @@ runKmersOnFile file = do
   let dna = DnaString l1
   let kmersResult = kmers k dna
   return $ T.unlines $ map dnaStringPrint kmersResult
-  
-  
+
+runSpelledKmersToGenome :: FilePath -> IO T.Text
+runSpelledKmersToGenome file = do
+  content <- T.IO.readFile file
+  let dnas = map DnaString $ T.lines content
+  return $
+    case spelledKmersToGenome dnas of
+      Just (DnaString x) -> x
+      Nothing -> T.pack ""
 

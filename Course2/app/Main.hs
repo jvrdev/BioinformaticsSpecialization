@@ -5,6 +5,6 @@ import Lib
 
 main :: IO ()
 main = do
-  kmersResult <- runKmersOnFile "dataset_197_3.txt"
-  T.IO.putStrLn kmersResult
+  y <- runSpelledKmersToGenome "dataset_198_3.txt"
+  T.IO.putStrLn y
   
