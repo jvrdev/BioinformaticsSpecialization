@@ -2,6 +2,7 @@ module Lib
     ( DnaString(..)
     , slice
     , kmers
+    , spelledKmersToGenome
     , runKmersOnFile
     ) where
 
@@ -24,6 +25,11 @@ kmers :: Int -> DnaString -> [DnaString]
 kmers k dna =
   map kmerAt [ 0 .. dnaStringLength dna - k]
   where kmerAt i = slice i k dna
+
+spelledKmersToGenome :: [DnaString] -> Maybe DnaString
+spelledKmersToGenome [] = Nothing
+spelledKmersToGenome ((DnaString h):t) =
+  Just $ DnaString $ T.pack $ T.unpack h ++ map (T.last . dnaStringPrint) t
 
 runKmersOnFile :: FilePath -> IO T.Text
 runKmersOnFile file = do
