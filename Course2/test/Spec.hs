@@ -2,7 +2,7 @@ import Data.List
 import qualified Data.Text as T
 import Lib
 import Test.Hspec
-    
+
 main :: IO ()
 main = hspec $ do
   describe "Lib" $ do

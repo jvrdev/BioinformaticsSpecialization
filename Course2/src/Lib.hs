@@ -9,6 +9,7 @@ module Lib
     , runOverlapGraph
     ) where
 
+import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
 
@@ -45,6 +46,16 @@ overlapGraph xs =
     adjacencyEntry a = (a, filter (connectsWith a) xs)
     sndIsNotEmpty = not . null . snd 
 
+printAdjacencyList :: (a -> T.Text) -> AdjacencyList a -> IO ()
+printAdjacencyList p xs =
+  mapM_ f xs
+  where
+    f (node, connects) = do
+      T.IO.putStr $ p node
+      putStr " -> "
+      mapM_ T.IO.putStr (intersperse (T.pack ", ") $ map p connects)
+      putStrLn ""
+
 runKmersOnFile :: FilePath -> IO T.Text
 runKmersOnFile file = do
   content <- T.IO.readFile file
@@ -63,6 +74,9 @@ runSpelledKmersToGenome file = do
       Just (DnaString x) -> x
       Nothing -> T.pack ""
 
-runOverlapGraph :: FilePath -> IO T.Text
+runOverlapGraph :: FilePath -> IO ()
 runOverlapGraph file = do
-  return $ T.pack ""
+  content <- T.IO.readFile file
+  let dnas = map DnaString $ T.lines content
+  let result = overlapGraph dnas
+  printAdjacencyList dnaStringPrint result
