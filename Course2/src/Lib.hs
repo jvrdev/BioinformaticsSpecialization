@@ -3,14 +3,17 @@ module Lib
     , slice
     , kmers
     , spelledKmersToGenome
+    , overlapGraph
     , runKmersOnFile
     , runSpelledKmersToGenome
+    , runOverlapGraph
     ) where
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
 
 data DnaString = DnaString T.Text deriving (Show, Eq)
+type AdjacencyList a = [(a, [a])]
 
 dnaStringLength :: DnaString -> Int
 dnaStringLength (DnaString s) = T.length s
@@ -32,6 +35,16 @@ spelledKmersToGenome [] = Nothing
 spelledKmersToGenome ((DnaString h):t) =
   Just $ DnaString $ T.pack $ T.unpack h ++ map (T.last . dnaStringPrint) t
 
+connectsWith :: DnaString -> DnaString -> Bool
+connectsWith (DnaString a) (DnaString b) = (T.drop 1 a) == (T.dropEnd 1 b)
+
+overlapGraph :: [DnaString] -> AdjacencyList DnaString
+overlapGraph xs =
+  filter sndIsNotEmpty $ map adjacencyEntry $ xs
+  where
+    adjacencyEntry a = (a, filter (connectsWith a) xs)
+    sndIsNotEmpty = not . null . snd 
+
 runKmersOnFile :: FilePath -> IO T.Text
 runKmersOnFile file = do
   content <- T.IO.readFile file
@@ -50,3 +63,6 @@ runSpelledKmersToGenome file = do
       Just (DnaString x) -> x
       Nothing -> T.pack ""
 
+runOverlapGraph :: FilePath -> IO T.Text
+runOverlapGraph file = do
+  return $ T.pack ""
