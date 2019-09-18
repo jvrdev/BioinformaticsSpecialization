@@ -49,10 +49,28 @@ main = hspec $ do
                 , "GGCAT"
                 , "GGCAC" ]
         let expectedOutput =
-                [ (f "AGGCA", [f "GGCAC", f "GGCAT"])
-                , (f "CATGC", [f "ATGCG"])
-                , (f "GCATG", [f "CATGC"])
-                , (f "GGCAT", [f "GCATG"])] 
+                fmap f
+                $ AL                
+                [ ALE ("AGGCA", ["GGCAC", "GGCAT"])
+                , ALE ("CATGC", ["ATGCG"])
+                , ALE ("GCATG", ["CATGC"])
+                , ALE ("GGCAT", ["GCATG"]) ] 
         overlapGraph input `shouldBe` expectedOutput
 
+    describe "Solve the De Bruijn Graph from a String Problem" $ do
+      it "returns expected values for sample" $ do
+        let f = DnaString . T.pack
+        let input = f "AAGATTCTCTAAGA"
+        let expectedOutput = fmap f $ AL $ map ALE
+                [ ("AAG",  ["AGA", "AGA"])
+                , ("AGA",  ["GAT"])
+                , ("ATT",  ["TTC"])
+                , ("CTA",  ["TAA"])
+                , ("CTC",  ["TCT"])
+                , ("GAT",  ["ATT"])
+                , ("TAA",  ["AAG"])
+                , ("TCT",  ["CTA", "CTC"])
+                , ("TTC",  ["TCT"]) ]
+        deBruijnGraph 4 input `shouldBe` expectedOutput
+                     
 

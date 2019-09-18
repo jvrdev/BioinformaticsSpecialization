@@ -4,9 +4,12 @@ module Lib
     , kmers
     , spelledKmersToGenome
     , overlapGraph
+    , deBruijnGraph
     , runKmersOnFile
     , runSpelledKmersToGenome
     , runOverlapGraph
+    , AdjacencyListEntry(..)
+    , AdjacencyList(..)
     ) where
 
 import Data.List
@@ -17,8 +20,22 @@ data DnaString = DnaString T.Text deriving (Eq)
 
 instance Show DnaString where
   show (DnaString s) = T.unpack s
- 
-type AdjacencyList a = [(a, [a])]
+
+data AdjacencyListEntry a = ALE (a, [a]) deriving (Eq)
+
+instance Functor AdjacencyListEntry where
+  fmap f (ALE (node, edges)) = ALE (f node, map f edges)
+
+instance Show a => Show (AdjacencyListEntry a) where
+  show (ALE x) = show x
+  
+data AdjacencyList a = AL [AdjacencyListEntry a]  deriving (Eq)
+
+instance Functor AdjacencyList where
+  fmap f (AL entries) = AL $ map (fmap f) entries
+
+instance Show a => Show (AdjacencyList a) where
+  show (AL xs) = show xs
 
 dnaStringLength :: DnaString -> Int
 dnaStringLength (DnaString s) = T.length s
@@ -42,16 +59,20 @@ connectsWith (DnaString a) (DnaString b) = (T.drop 1 a) == (T.dropEnd 1 b)
 
 overlapGraph :: [DnaString] -> AdjacencyList DnaString
 overlapGraph xs =
-  filter sndIsNotEmpty $ map adjacencyEntry $ xs
+  AL $ filter sndIsNotEmpty $ map adjacencyEntry $ xs
   where
-    adjacencyEntry a = (a, filter (connectsWith a) xs)
-    sndIsNotEmpty = not . null . snd 
+    adjacencyEntry a = ALE (a, filter (connectsWith a) xs)
+    sndIsNotEmpty (ALE (_, edges)) = not $ null $ edges 
+
+deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
+deBruijnGraph k dna =
+  overlapGraph $ kmers (k - 1) dna
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
-printAdjacencyList xs =
+printAdjacencyList (AL xs) =
   mapM_ f xs
   where
-    f (node, connects) = do
+    f (ALE (node, connects)) = do
       putStr $ show node
       putStr " -> "
       mapM_ putStr (intersperse ", " $ map show connects)
