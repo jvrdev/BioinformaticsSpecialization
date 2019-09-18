@@ -25,17 +25,11 @@ data AdjacencyListEntry a = ALE (a, [a]) deriving (Eq)
 
 instance Functor AdjacencyListEntry where
   fmap f (ALE (node, edges)) = ALE (f node, map f edges)
-
-instance Show a => Show (AdjacencyListEntry a) where
-  show (ALE x) = show x
   
 data AdjacencyList a = AL [AdjacencyListEntry a]  deriving (Eq)
 
 instance Functor AdjacencyList where
   fmap f (AL entries) = AL $ map (fmap f) entries
-
-instance Show a => Show (AdjacencyList a) where
-  show (AL xs) = show xs
 
 dnaStringLength :: DnaString -> Int
 dnaStringLength (DnaString s) = T.length s
