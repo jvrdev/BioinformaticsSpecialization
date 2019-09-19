@@ -23,10 +23,16 @@ instance Show DnaString where
 
 data AdjacencyListEntry a = ALE (a, [a]) deriving (Eq, Show, Ord)
 
+aleNode :: AdjacencyListEntry a -> a
+aleNode (ALE (n, _)) = n
+
+aleEdges :: AdjacencyListEntry a -> [a]
+aleEdges (ALE (_, es)) = es
+         
 instance Functor AdjacencyListEntry where
   fmap f (ALE (node, edges)) = ALE (f node, map f edges)
   
-data AdjacencyList a = AL [AdjacencyListEntry a]  deriving (Eq, Show, Ord)
+data AdjacencyList a = AL [AdjacencyListEntry a] deriving (Eq, Show, Ord)
 
 instance Functor AdjacencyList where
   fmap f (AL entries) = AL $ map (fmap f) entries
@@ -60,10 +66,20 @@ overlapGraph xs =
 
 deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
 deBruijnGraph k dna =
-  removeAlDups $ AL $ map removeAleDups overlaps 
+  AL $ map mergeAle $ groupBy sameNode $ sortBy (\a b -> compare (aleNode a) (aleNode b)) overlaps 
   where
-    removeAleDups (ALE (node, edges)) = ALE (node, nub $ sort edges)
-    removeAlDups (AL ales) = AL $ nub $ sort $ ales
+    sameNode (ALE (a, _)) (ALE (b, _)) = a == b
+    mergeAle ales = ALE (aleNode $ head ales, removeDups $ sort $ concat $ map aleEdges ales)
+    removeDups xs =
+      fst
+      $
+      foldr
+      (\x (ys, maybeLast) ->
+         case maybeLast of
+           Nothing -> (x:ys, Just x)
+           Just _last -> if _last == x then (ys, Nothing) else (x:ys, Just x))
+      ([], Nothing)
+      xs
     (AL overlaps) = overlapGraph $ kmers (k - 1) dna
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
