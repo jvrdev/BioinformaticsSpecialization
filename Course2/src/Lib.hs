@@ -16,17 +16,17 @@ import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
 
-data DnaString = DnaString T.Text deriving (Eq)
+data DnaString = DnaString T.Text deriving (Eq, Ord)
 
 instance Show DnaString where
   show (DnaString s) = T.unpack s
 
-data AdjacencyListEntry a = ALE (a, [a]) deriving (Eq)
+data AdjacencyListEntry a = ALE (a, [a]) deriving (Eq, Show, Ord)
 
 instance Functor AdjacencyListEntry where
   fmap f (ALE (node, edges)) = ALE (f node, map f edges)
   
-data AdjacencyList a = AL [AdjacencyListEntry a]  deriving (Eq)
+data AdjacencyList a = AL [AdjacencyListEntry a]  deriving (Eq, Show, Ord)
 
 instance Functor AdjacencyList where
   fmap f (AL entries) = AL $ map (fmap f) entries
@@ -60,7 +60,11 @@ overlapGraph xs =
 
 deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
 deBruijnGraph k dna =
-  overlapGraph $ kmers (k - 1) dna
+  removeAlDups $ AL $ map removeAleDups overlaps 
+  where
+    removeAleDups (ALE (node, edges)) = ALE (node, nub $ sort edges)
+    removeAlDups (AL ales) = AL $ nub $ sort $ ales
+    (AL overlaps) = overlapGraph $ kmers (k - 1) dna
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
 printAdjacencyList (AL xs) =
