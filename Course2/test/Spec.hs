@@ -72,5 +72,25 @@ main = hspec $ do
                 , ("TCT",  ["CTA", "CTC"])
                 , ("TTC",  ["TCT"]) ]
         deBruijnGraph 4 input `shouldBe` expectedOutput
+    describe "Solve the DeBruijn Graph from k-mers Problem" $ do
+      it "returns expected values for sample" $ do
+        let f = DnaString . T.pack
+        let input =
+                map f [
+                     "GAGG"
+                   , "CAGG"
+                   , "GGGG"
+                   , "GGGA"
+                   , "CAGG"
+                   , "AGGG"
+                   , "GGAG"
+                   ]
+        let expectedOutput = fmap f $ AL $ map ALE
+                [ ("AGG",  ["GGG"])
+                , ("CAG",  ["AGG", "AGG"])
+                , ("GAG",  ["AGG"])
+                , ("GGA",  ["GAG"])
+                , ("GGG",  ["GGA", "GGG"]) ]
+        deBruijnGraphFromKmers input `shouldBe` expectedOutput
                      
 

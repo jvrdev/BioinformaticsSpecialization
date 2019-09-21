@@ -4,6 +4,6 @@ import qualified Data.Text.IO as T.IO
 import Lib
 
 main :: IO ()
-main = runOverlapGraph "debrujn.txt"
+main = runDeBruijnGraphFromKmers "dataset_200_8.txt"
   --T.IO.putStrLn y
   

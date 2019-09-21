@@ -5,9 +5,12 @@ module Lib
     , spelledKmersToGenome
     , overlapGraph
     , deBruijnGraph
+    , deBruijnGraphFromKmers
     , runKmersOnFile
     , runSpelledKmersToGenome
     , runOverlapGraph
+    , runDeBruijnGraph
+    , runDeBruijnGraphFromKmers
     , AdjacencyListEntry(..)
     , AdjacencyList(..)
     ) where
@@ -28,6 +31,9 @@ aleNode (ALE (n, _)) = n
 
 aleEdges :: AdjacencyListEntry a -> [a]
 aleEdges (ALE (_, es)) = es
+
+aleOrder :: Ord a => AdjacencyListEntry a -> AdjacencyListEntry a -> Ordering
+aleOrder a b = compare (aleNode a) (aleNode b)
          
 instance Functor AdjacencyListEntry where
   fmap f (ALE (node, edges)) = ALE (f node, map f edges)
@@ -64,23 +70,19 @@ overlapGraph xs =
     adjacencyEntry a = ALE (a, filter (connectsWith a) xs)
     sndIsNotEmpty (ALE (_, edges)) = not $ null $ edges 
 
-deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
-deBruijnGraph k dna =
-  AL $ map mergeAle $ groupBy sameNode $ sortBy (\a b -> compare (aleNode a) (aleNode b)) overlaps 
+deBruijnGraphFromKmers :: [DnaString] -> AdjacencyList DnaString
+deBruijnGraphFromKmers edges =
+  AL $ map mergeAle $ groupBy sameNode $ sort $ map edgeToAle edges 
   where
+    edgeToAle (DnaString edge) =
+      ALE $
+      (DnaString $ T.dropEnd 1 edge
+      , [DnaString $ T.drop 1 edge])
     sameNode (ALE (a, _)) (ALE (b, _)) = a == b
-    mergeAle ales = ALE (aleNode $ head ales, removeDups $ sort $ concat $ map aleEdges ales)
-    removeDups xs =
-      fst
-      $
-      foldr
-      (\x (ys, maybeLast) ->
-         case maybeLast of
-           Nothing -> (x:ys, Just x)
-           Just _last -> if _last == x then (ys, Nothing) else (x:ys, Just x))
-      ([], Nothing)
-      xs
-    (AL overlaps) = overlapGraph $ kmers (k - 1) dna
+    mergeAle ales = ALE (aleNode $ head ales, sort $ concat $ map aleEdges ales)
+
+deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
+deBruijnGraph k dna = deBruijnGraphFromKmers $ kmers k dna
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
 printAdjacencyList (AL xs) =
@@ -89,7 +91,7 @@ printAdjacencyList (AL xs) =
     f (ALE (node, connects)) = do
       putStr $ show node
       putStr " -> "
-      mapM_ putStr (intersperse ", " $ map show connects)
+      mapM_ putStr (intersperse "," $ map show connects)
       putStrLn ""
 
 runKmersOnFile :: FilePath -> IO T.Text
@@ -115,4 +117,20 @@ runOverlapGraph file = do
   content <- T.IO.readFile file
   let dnas = map DnaString $ T.lines content
   let result = overlapGraph dnas
+  printAdjacencyList result
+
+runDeBruijnGraph :: FilePath -> IO ()
+runDeBruijnGraph file = do
+  content <- T.IO.readFile file
+  let l0:l1:_ = T.lines content
+  let k = (read :: String -> Int) (T.unpack l0)
+  let dnas = DnaString l1
+  let result = deBruijnGraph k dnas
+  printAdjacencyList result
+
+runDeBruijnGraphFromKmers :: FilePath -> IO ()
+runDeBruijnGraphFromKmers file = do
+  content <- T.IO.readFile file
+  let dnas = map DnaString $ T.lines content
+  let result = deBruijnGraphFromKmers dnas
   printAdjacencyList result
