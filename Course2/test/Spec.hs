@@ -72,6 +72,7 @@ main = hspec $ do
                 , ("TCT",  ["CTA", "CTC"])
                 , ("TTC",  ["TCT"]) ]
         deBruijnGraph 4 input `shouldBe` expectedOutput
+
     describe "Solve the DeBruijn Graph from k-mers Problem" $ do
       it "returns expected values for sample" $ do
         let f = DnaString . T.pack
@@ -92,5 +93,23 @@ main = hspec $ do
                 , ("GGA",  ["GAG"])
                 , ("GGG",  ["GGA", "GGG"]) ]
         deBruijnGraphFromKmers input `shouldBe` expectedOutput
-                     
+
+    describe "Solve the Eulerian Cycle Problem" $ do
+      it "returns expected values for sample" $ do
+        let input =
+                AL $ map ALE 
+                 [ (0,  [3])
+                 , (1,  [0])
+                 , (2,  [1, 6])
+                 , (3,  [2])
+                 , (4,  [2])
+                 , (5,  [4])
+                 , (6,  [5, 8])
+                 , (7,  [9])
+                 , (8,  [7])
+                 , (9,  [6])
+                 ]
+        let expectedOutput = [ 6, 8, 7, 9, 6, 5, 4, 2, 1, 0, 3, 2, 6 ]
+        eulerianCycle input `shouldBe` expectedOutput
+
 

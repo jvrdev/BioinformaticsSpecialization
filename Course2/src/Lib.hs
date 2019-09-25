@@ -6,6 +6,7 @@ module Lib
     , overlapGraph
     , deBruijnGraph
     , deBruijnGraphFromKmers
+    , eulerianCycle
     , runKmersOnFile
     , runSpelledKmersToGenome
     , runOverlapGraph
@@ -18,6 +19,7 @@ module Lib
 import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
+import qualified Data.HashMap.Strict as HashMap
 
 data DnaString = DnaString T.Text deriving (Eq, Ord)
 
@@ -83,6 +85,23 @@ deBruijnGraphFromKmers edges =
 
 deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
 deBruijnGraph k dna = deBruijnGraphFromKmers $ kmers k dna
+
+walk :: HashMap a -> [a] -> [a]
+walk available acc =
+  if HashMap.null available
+  then acc
+  else
+    if null acc
+    then
+      loop available [head $ HashMap.keys available]
+    else
+      loop available $
+
+eulerianCycle :: AdjacencyList a -> [a]
+eulerianCycle (AL entries) = [x]
+  walk available []
+  where
+    available = HashMap.fromList $ map (\(ALE x) -> x) entries
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
 printAdjacencyList (AL xs) =
