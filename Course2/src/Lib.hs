@@ -19,7 +19,7 @@ module Lib
 import Data.List
 import qualified Data.Text as T
 import qualified Data.Text.IO as T.IO
-import qualified Data.HashMap.Strict as HashMap
+import qualified Data.HashMap.Strict.HashMap as HashMap
 
 data DnaString = DnaString T.Text deriving (Eq, Ord)
 
@@ -86,22 +86,46 @@ deBruijnGraphFromKmers edges =
 deBruijnGraph :: Int -> DnaString -> AdjacencyList DnaString
 deBruijnGraph k dna = deBruijnGraphFromKmers $ kmers k dna
 
-walk :: HashMap a -> [a] -> [a]
-walk available acc =
-  if HashMap.null available
-  then acc
-  else
-    if null acc
-    then
-      loop available [head $ HashMap.keys available]
-    else
-      loop available $
+rotate :: Int [a] -> [a]
+rotate n xs = bs ++ as where (as, bs) = splitAt n xs
+
+consumeEdge :: a -> HashMap a [a] -> (HashMap a [a], Maybe a)
+consumeEdge node edges =
+  case HashMap.lookup node edges of
+    Nothing -> (edges, Nothing)
+    Just [x] -> (HashMap.delete node edges, Just x)
+    Just (x:y) -> (HashMap.insert node y, Just x)
+
+walkCycle :: HashMap a [a] -> [a] -> (HashMap a [a], [a])
+walkCycle available walk =
+  loop (available, startCycle)
+  where
+    loop :: (HashMap a [a], [a]) -> (HashMap a [a], [a])
+    loop (avs, (node:path)) =
+      let (next, avs') = consumeEdge node avs in
+        path' = case next of
+          Just x -> x:path
+          Nothing -> path
+    startCycle =
+      if null walk
+      then [firstNodeAvailable]
+      else startCycle
+      where
+        firstNodeAvailable = head $ HashMap.keys available
+        firstNodeInCycleAvailable = first (\node -> HashMap.member node available) walk
+        startCycle = rotate (fromJust $ elemIndex startNode walk) walk
 
 eulerianCycle :: AdjacencyList a -> [a]
 eulerianCycle (AL entries) = [x]
-  walk available []
+  loop available []
   where
     available = HashMap.fromList $ map (\(ALE x) -> x) entries
+    loop available walk =
+      if HashMap.null available
+      then walk
+      else
+        let (available', walk') = walkCycle available walk
+        in loop available' walk'
 
 printAdjacencyList :: Show a => AdjacencyList a -> IO ()
 printAdjacencyList (AL xs) =
