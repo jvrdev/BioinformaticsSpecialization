@@ -11,8 +11,8 @@ let areEqual (expected : 't) (actual : 't) =
 let Setup () =
     ()
 
-let sample : AdjacencyList<int> = 
-    [
+let sample : DirectedGraph<int> = 
+    AdjacencyList [
         0, [3]
         1, [0]
         2, [1; 6]
@@ -38,11 +38,27 @@ let sampleText = """0 -> 3
     
 [<Test>]
 let ``parse adjacency list`` () =
-    let actual = parse int sampleText
+    let actual = DirectedGraph.parse int sampleText
     areEqual sample actual
 
 [<Test>]
 let ``print adjacency list`` () =
-    let actual = print string sample
+    let actual = DirectedGraph.print string sample
     areEqual sampleText actual
     
+[<Test>]
+let ``loop adjacency list`` () =
+    let graph = AdjacencyList [
+        0, [1]
+        1, [2]
+        2, [3]
+        3, [4]
+        4, [0]
+    ]
+    let (walk, graph') = walkUntilCycle graph (Walk [0])
+    match walk with
+    | Some w ->
+        let printedWalk = Walk.print string w
+        printfn "%s" printedWalk
+    | None ->
+        Assert.Fail "Walk was not returned"
