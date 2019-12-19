@@ -62,6 +62,46 @@ let ``loop adjacency list`` () =
 [<Test>]
 let ``euler cycle`` () =
     let graph = DirectedGraph.parse int sampleText
-    let cycle = euler graph
+    let cycle = eulerCycle graph
     let printedWalk = Walk.print string cycle
     printfn "%s" printedWalk
+
+[<Test>]
+let ``graph grade calculation`` () =
+    let graph = AdjacencyList [
+        0, [1]
+        1, [2]
+        2, [3]
+        3, [4]
+        4, [0]
+    ]
+    let grades = DirectedGraph.grades graph
+
+    let output = Map.ofList [
+        0, { InGrade = 1; OutGrade = 1 }
+        1, { InGrade = 1; OutGrade = 1 }
+        2, { InGrade = 1; OutGrade = 1 }
+        3, { InGrade = 1; OutGrade = 1 }
+        4, { InGrade = 1; OutGrade = 1 }
+    ]
+
+    areEqual output grades
+
+
+[<Test>]
+let ``eulerian walk`` () =
+    let text = """0 -> 2
+     1 -> 3
+     2 -> 1
+     3 -> 0,4
+     6 -> 3,7
+     7 -> 8
+     8 -> 9
+     9 -> 6"""
+    let graph = DirectedGraph.parse int text
+
+    let walk = eulerPath graph
+
+    let expectedWalk = "6->7->8->9->6->3->0->2->1->3->4"
+
+    areEqual expectedWalk (Walk.print string walk)

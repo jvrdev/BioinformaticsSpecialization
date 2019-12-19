@@ -13,7 +13,11 @@ let trim (s : string) =
 
 type Nucleobase = A | C | G | T
 
-type DirectedGraph<'a when 'a : equality> =
+type Grade = { InGrade : int; OutGrade : int }
+with
+    static member balance {InGrade = a; OutGrade = b} = a - b
+
+type DirectedGraph<'a when 'a : equality and 'a : comparison> =
     | AdjacencyList of list<'a * list<'a>>
 with 
     static member print (printElem : 'a -> string) (AdjacencyList x) =
@@ -56,7 +60,30 @@ with
     static member hasEdgesFor (node : 'a) (AdjacencyList records : DirectedGraph<'a>) : bool =
         records
         |> Seq.exists (fst >> (=)node)
-
+    static member edges (AdjacencyList records : DirectedGraph<'a>) : seq<'a * 'a> =
+        records |> Seq.collect (fun (src, dsts) -> dsts |> Seq.map (fun dst -> (src, dst)))
+    static member grades (AdjacencyList records : DirectedGraph<'a> as graph) : Map<'a, Grade> =
+        let grades = 
+            records
+            |> Seq.map (fun (src, dsts) -> src, { InGrade = 0; OutGrade = dsts.Length })
+            |> Map.ofSeq
+        DirectedGraph.edges graph 
+        |> Seq.fold
+            (fun gradesPrime (_, dst) ->
+                match Map.tryFind dst gradesPrime with
+                | Some x -> Map.add dst { x with InGrade = x.InGrade + 1 } gradesPrime
+                | None -> Map.add dst { InGrade = 1; OutGrade = 0 } gradesPrime
+            )
+            grades
+    static member add (src : 'a, dst : 'a) (AdjacencyList records : DirectedGraph<'a>) : DirectedGraph<'a> =
+        let zero = (false, [])
+        let folder ((added : bool), (recordsPrime : list<'a * list<'a>>)) (srci : 'a, dstsi : list<'a>) : bool * list<'a * list<'a>> =
+            if src = srci 
+            then true, (srci, dst::dstsi) :: recordsPrime
+            else added, (srci, dstsi) :: recordsPrime
+        let added, recordsPrime = Seq.fold folder zero records
+        AdjacencyList <| if added then recordsPrime else (src, [dst]) :: records
+            
 type Walk<'a when 'a : equality> = Walk of list<'a>
 with
     static member print (printElem : 'a -> string) (Walk x) =
@@ -74,7 +101,7 @@ with
     //    List.contains node xs
     static member append (node : 'a) (Walk xs) =
         Walk (node :: xs)
-    static member rotate (Walk xs : Walk<'a>) (n : int) : Walk<'a> =
+    static member rotate (n : int) (Walk xs : Walk<'a>) : Walk<'a> =
         let length = List.length xs
         let nPrime = n % length
         Seq.concat [
@@ -108,14 +135,31 @@ let rec eulerStep (remainingGraph : DirectedGraph<'a>) (progress : Walk<'a>) : W
         let (Walk ws as nocycle) = Walk.dropFirstIfCycle walkPrime
         match ws |> Seq.tryFindIndex (fun n -> DirectedGraph.hasEdgesFor n graphPrime) with
         | Some i ->
-            let walkPrimePrime = Walk.rotate nocycle i 
+            let walkPrimePrime = Walk.rotate i nocycle 
             eulerStep graphPrime walkPrimePrime
         | None -> invalidArg "graph" "Graph is not Eulerian"
 
-let euler (graph : DirectedGraph<'a>) : Walk<'a> =
+let eulerCycle (graph : DirectedGraph<'a>) : Walk<'a> =
     match DirectedGraph.takeFirst graph with
     | Some first -> Walk.appendLast <| eulerStep graph (Walk [first])
     | None -> invalidArg "graph" "Graph is empty"
+
+let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
+    let grades = DirectedGraph.grades graph
+    let src = 
+        grades
+        |> Seq.find (fun kvp -> Grade.balance kvp.Value < 0)
+        |> (fun x -> x.Key)
+    let dst =
+        grades
+        |> Seq.find (fun kvp -> Grade.balance kvp.Value > 0)
+        |> (fun x -> x.Key)
+    let graphPrime = DirectedGraph.add (dst, src) graph
+    let (Walk ws as walk) = 
+        eulerStep graphPrime (Walk [src])
+        |> Walk.dropFirstIfCycle
+    let i = ws |> Seq.findIndex ((=)dst)
+    Walk.rotate i walk
 
 let runOnFile f path =
     let input = System.IO.File.ReadAllText path
@@ -124,10 +168,10 @@ let runOnFile f path =
 
 let runEuler (x : string) : string =
     let graph = DirectedGraph.parse int x
-    let walk = euler graph
+    let walk = eulerPath graph
     Walk.print string walk
 
 [<EntryPoint>]
 let main argv =
-    runOnFile runEuler """C:\src\BioinformaticsSpecialization\Course2\dataset_203_2.txt"""
+    runOnFile runEuler """C:\src\BioinformaticsSpecialization\Course2\dataset_203_6.txt"""
     0
