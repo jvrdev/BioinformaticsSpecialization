@@ -23,12 +23,13 @@ with
     static member parse (parseNode : string -> 'a) (s : string) : DirectedGraph<'a> =
         let lines = splitLines s
         lines 
+        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.map (
             trim
             >> splitS " -> " 
             >> (function
                 | [|a;  b|] -> parseNode a, splitS "," b |> Seq.map parseNode |> Seq.toList
-                | other -> failwith "Invalid line format, fields were %A" other))
+                | other -> failwithf "Invalid line format, fields were %A" other))
         |> Seq.toList
         |> AdjacencyList
     static member takeFirst (AdjacencyList records) : option<'a> =
@@ -60,8 +61,9 @@ type Walk<'a when 'a : equality> = Walk of list<'a>
 with
     static member print (printElem : 'a -> string) (Walk x) =
         x
+        |> Seq.rev
         |> Seq.map printElem
-        |> String.concat " -> "
+        |> String.concat "->"
     static member parse (parseElem : string -> 'a) (s : string) : Walk<'a> =
         s
         |> splitS " -> "
@@ -72,45 +74,60 @@ with
     //    List.contains node xs
     static member append (node : 'a) (Walk xs) =
         Walk (node :: xs)
-    static member rotate (Walk xs) (n : int) =
+    static member rotate (Walk xs : Walk<'a>) (n : int) : Walk<'a> =
         let length = List.length xs
-        let n' = n % length
+        let nPrime = n % length
         Seq.concat [
-            (xs |> Seq.skip n')
-            (xs |> Seq.take n')
+            (xs |> Seq.skip nPrime)
+            (xs |> Seq.take nPrime)
         ]
         |> Seq.toList
         |> Walk
+    static member dropFirstIfCycle (x : Walk<'a>) : Walk<'a> =
+        match x with
+        | (Walk (h::t)) when List.last t = h -> Walk t
+        | _ -> x
+    static member appendLast (Walk ws : Walk<'a> as x) : Walk<'a> =
+        let last = List.last ws
+        Walk.append last x
 
 let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> * DirectedGraph<'a> =
     match walk with
     | Walk [] -> invalidArg "walk" "Walk cannot be empty"
     | Walk (last::_) ->
         match DirectedGraph.walk last graph with
-        | Some (_, next), graph' -> 
-            walkUntilCycle graph' (Walk.append next walk)
-        | None, graph' -> walk, graph'
+        | Some (_, next), graphPrime -> 
+            walkUntilCycle graphPrime (Walk.append next walk)
+        | None, grpahPrime -> walk, grpahPrime
 
-let euler (graph : DirectedGraph<'a>) : option<Walk<'a>> =
-    DirectedGraph.takeFirst graph 
-    |> Option.map (
-        fun first ->
-            let walk', graph' = walkUntilCycle graph (Walk [first])
-            if DirectedGraph.isEmpty graph'
-            then walk'
-            else 
-                let (Walk ws) = walk'
-                match ws |> Seq.tryFindIndex (fun n -> DirectedGraph.hasEdgesFor n graph') with
-                | Some i ->
-                    let walk'' = Walk.rotate
-                    ()
-                | None -> failwith
-    )
-    
+let rec eulerStep (remainingGraph : DirectedGraph<'a>) (progress : Walk<'a>) : Walk<'a> =
+    let walkPrime, graphPrime = walkUntilCycle remainingGraph progress
+    if DirectedGraph.isEmpty graphPrime
+    then walkPrime
+    else 
+        let (Walk ws as nocycle) = Walk.dropFirstIfCycle walkPrime
+        match ws |> Seq.tryFindIndex (fun n -> DirectedGraph.hasEdgesFor n graphPrime) with
+        | Some i ->
+            let walkPrimePrime = Walk.rotate nocycle i 
+            eulerStep graphPrime walkPrimePrime
+        | None -> invalidArg "graph" "Graph is not Eulerian"
 
+let euler (graph : DirectedGraph<'a>) : Walk<'a> =
+    match DirectedGraph.takeFirst graph with
+    | Some first -> Walk.appendLast <| eulerStep graph (Walk [first])
+    | None -> invalidArg "graph" "Graph is empty"
 
-//let walkCycle (x : DirectedGraph<'a>) : option<Walk<'a>> * DirectedGraph<'a> =
+let runOnFile f path =
+    let input = System.IO.File.ReadAllText path
+    let result = f input
+    System.IO.File.WriteAllText ("result.txt", result, System.Text.Encoding.ASCII)
+
+let runEuler (x : string) : string =
+    let graph = DirectedGraph.parse int x
+    let walk = euler graph
+    Walk.print string walk
 
 [<EntryPoint>]
 let main argv =
+    runOnFile runEuler """C:\src\BioinformaticsSpecialization\Course2\dataset_203_2.txt"""
     0

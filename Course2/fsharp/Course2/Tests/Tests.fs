@@ -55,10 +55,13 @@ let ``loop adjacency list`` () =
         3, [4]
         4, [0]
     ]
-    let (walk, graph') = walkUntilCycle graph (Walk [0])
-    match walk with
-    | Some w ->
-        let printedWalk = Walk.print string w
-        printfn "%s" printedWalk
-    | None ->
-        Assert.Fail "Walk was not returned"
+    let (w, _) = walkUntilCycle graph (Walk [0])
+    let printedWalk = Walk.print string w
+    printfn "%s" printedWalk
+
+[<Test>]
+let ``euler cycle`` () =
+    let graph = DirectedGraph.parse int sampleText
+    let cycle = euler graph
+    let printedWalk = Walk.print string cycle
+    printfn "%s" printedWalk
