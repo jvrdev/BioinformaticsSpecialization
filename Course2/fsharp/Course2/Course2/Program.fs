@@ -26,6 +26,13 @@ with
             records
             |> List.map (fun (src, dsts) -> f src, dsts |> List.map f)
         AdjacencyList recordsPrime
+    static member sort (AdjacencyList records : DirectedGraph<'a> when 'a : comparison) =
+        let recordsPrime = 
+            records
+            |> Seq.map (fun (src, dsts) -> (src, dsts |> List.sort))
+            |> Seq.sortBy fst
+            |> Seq.toList
+        AdjacencyList recordsPrime
     static member print (printElem : 'a -> string) (AdjacencyList x) =
         x
         |> Seq.map (fun (a, b) -> sprintf "%s -> %s" (printElem a) (b |> Seq.map printElem |> String.concat ","))
@@ -133,13 +140,13 @@ with
         let last = List.last ws
         Walk.append last x
 
-let deBruijnGraph<'t, 'a when 't :> seq<'a> > (k : int) (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
-    let toEdge (x : seq<'a>) = (x |> Seq.skip 1, x |> Seq.take (k - 1))
+let deBruijnGraph<'t, 'a, 'c when 't :> seq<'a> and 'c : comparison > (comparer : seq<'a> -> 'c) (k : int) (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
+    let toEdge (x : seq<'a>) = (x |> Seq.take (k - 1), x |> Seq.skip 1)
     let records = 
         kmers
         |> Seq.map toEdge
-        |> Seq.groupBy fst
-        |> Seq.map (fun (src, dsts) -> src, dsts |> Seq.map snd |> Seq.toList)
+        |> Seq.groupBy (fst >> comparer)
+        |> Seq.map (fun (_, dsts) -> dsts |> Seq.head |> fst, dsts |> Seq.map snd |> Seq.toList)
         |> Seq.toList
     AdjacencyList records
 
@@ -187,7 +194,7 @@ let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
     Walk.rotate i walk
 
 let stringReconstruction (k : int) (kmers : seq<string>) : string =
-    let db = deBruijnGraph k kmers |> DirectedGraph.map (Seq.toArray >> System.String)
+    let db = deBruijnGraph (Seq.toArray >> System.String) k kmers |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerPath db
     let steps = Walk.toArray path
     System.String.Concat steps

@@ -123,7 +123,10 @@ let ``debruijn graph`` () =
         |> Seq.map trim
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
-    let graph : DirectedGraph<string> = deBruijnGraph k dnas |> DirectedGraph.map (Seq.toArray >> System.String)
+    let graph : DirectedGraph<string> = 
+        deBruijnGraph (Seq.toArray >> System.String) k dnas
+        |> DirectedGraph.map (Seq.toArray >> System.String)
+        |> DirectedGraph.sort
     let expectedGraphText = """AGG -> GGG
     CAG -> AGG,AGG
     GAG -> AGG
