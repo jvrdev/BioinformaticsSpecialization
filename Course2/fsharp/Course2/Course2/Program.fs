@@ -17,9 +17,15 @@ type Grade = { InGrade : int; OutGrade : int }
 with
     static member balance {InGrade = a; OutGrade = b} = a - b
 
-type DirectedGraph<'a when 'a : equality and 'a : comparison> =
-    | AdjacencyList of list<'a * list<'a>>
-with 
+type DirectedGraph<'t> =
+    | AdjacencyList of list<'t * list<'t>>
+with
+    static member map (f : 'u -> 'v) (g : DirectedGraph<'u>) : DirectedGraph<'v> =
+        let (AdjacencyList records) = g
+        let recordsPrime = 
+            records
+            |> List.map (fun (src, dsts) -> f src, dsts |> List.map f)
+        AdjacencyList recordsPrime
     static member print (printElem : 'a -> string) (AdjacencyList x) =
         x
         |> Seq.map (fun (a, b) -> sprintf "%s -> %s" (printElem a) (b |> Seq.map printElem |> String.concat ","))
@@ -57,12 +63,12 @@ with
         |> (fun (a, b) -> a , AdjacencyList b)
     static member isEmpty (AdjacencyList records : DirectedGraph<'a>) : bool =
         List.isEmpty records
-    static member hasEdgesFor (node : 'a) (AdjacencyList records : DirectedGraph<'a>) : bool =
+    static member hasEdgesFor<'a when 'a : equality> (node : 'a) (AdjacencyList records : DirectedGraph<'a>) : bool =
         records
         |> Seq.exists (fst >> (=)node)
     static member edges (AdjacencyList records : DirectedGraph<'a>) : seq<'a * 'a> =
         records |> Seq.collect (fun (src, dsts) -> dsts |> Seq.map (fun dst -> (src, dst)))
-    static member grades (AdjacencyList records : DirectedGraph<'a> as graph) : Map<'a, Grade> =
+    static member grades<'a when 'a : comparison> (AdjacencyList records : DirectedGraph<'a> as graph) : Map<'a, Grade> =
         let grades = 
             records
             |> Seq.map (fun (src, dsts) -> src, { InGrade = 0; OutGrade = dsts.Length })
@@ -86,11 +92,20 @@ with
             
 type Walk<'a when 'a : equality> = Walk of list<'a>
 with
+    // print with -> as separator
     static member print (printElem : 'a -> string) (Walk x) =
         x
         |> Seq.rev
         |> Seq.map printElem
         |> String.concat "->"
+    /// print without separator
+    static member print2 (printElem : 'a -> string) (Walk x) =
+        x
+        |> Seq.rev
+        |> Seq.map printElem
+        |> System.String.Concat
+    static member toArray (Walk x) =
+        x |> Seq.rev |> Seq.toArray
     static member parse (parseElem : string -> 'a) (s : string) : Walk<'a> =
         s
         |> splitS " -> "
@@ -118,6 +133,16 @@ with
         let last = List.last ws
         Walk.append last x
 
+let deBruijnGraph<'t, 'a when 't :> seq<'a> > (k : int) (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
+    let toEdge (x : seq<'a>) = (x |> Seq.skip 1, x |> Seq.take (k - 1))
+    let records = 
+        kmers
+        |> Seq.map toEdge
+        |> Seq.groupBy fst
+        |> Seq.map (fun (src, dsts) -> src, dsts |> Seq.map snd |> Seq.toList)
+        |> Seq.toList
+    AdjacencyList records
+
 let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> * DirectedGraph<'a> =
     match walk with
     | Walk [] -> invalidArg "walk" "Walk cannot be empty"
@@ -125,7 +150,7 @@ let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> 
         match DirectedGraph.walk last graph with
         | Some (_, next), graphPrime -> 
             walkUntilCycle graphPrime (Walk.append next walk)
-        | None, grpahPrime -> walk, grpahPrime
+        | None, graphPrime -> walk, graphPrime
 
 let rec eulerStep (remainingGraph : DirectedGraph<'a>) (progress : Walk<'a>) : Walk<'a> =
     let walkPrime, graphPrime = walkUntilCycle remainingGraph progress
@@ -161,6 +186,12 @@ let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
     let i = ws |> Seq.findIndex ((=)dst)
     Walk.rotate i walk
 
+let stringReconstruction (k : int) (kmers : seq<string>) : string =
+    let db = deBruijnGraph k kmers |> DirectedGraph.map (Seq.toArray >> System.String)
+    let path = eulerPath db
+    let steps = Walk.toArray path
+    System.String.Concat steps
+
 let runOnFile f path =
     let input = System.IO.File.ReadAllText path
     let result = f input
@@ -171,7 +202,7 @@ let runEuler (x : string) : string =
     let walk = eulerPath graph
     Walk.print string walk
 
-[<EntryPoint>]
+[<EntryPoint>] 
 let main argv =
     runOnFile runEuler """C:\src\BioinformaticsSpecialization\Course2\dataset_203_6.txt"""
     0

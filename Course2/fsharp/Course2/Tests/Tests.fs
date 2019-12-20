@@ -105,3 +105,52 @@ let ``eulerian walk`` () =
     let expectedWalk = "6->7->8->9->6->3->0->2->1->3->4"
 
     areEqual expectedWalk (Walk.print string walk)
+
+[<Test>]
+let ``debruijn graph`` () =
+    let text = """GAGG
+    CAGG
+    GGGG
+    GGGA
+    CAGG
+    AGGG
+    GGAG"""
+    
+    let k = 4
+    let dnas = 
+        text
+        |> splitLines
+        |> Seq.map trim
+        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+        |> Seq.toArray
+    let graph : DirectedGraph<string> = deBruijnGraph k dnas |> DirectedGraph.map (Seq.toArray >> System.String)
+    let expectedGraphText = """AGG -> GGG
+    CAG -> AGG,AGG
+    GAG -> AGG
+    GGA -> GAG
+    GGG -> GGA,GGG"""
+    let expectedGraph = DirectedGraph.parse id expectedGraphText
+    areEqual expectedGraph graph
+
+
+[<Test>]
+let ``string reconstruction`` () =
+    let text = """4
+     CTTA
+     ACCA
+     TACC
+     GGCT
+     GCTT
+     TTAC"""
+
+    let k, dnas =
+        text
+        |> splitLines
+        |> Seq.map trim
+        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+        |> Seq.toArray
+        |> (fun x -> Array.head x |> int, Array.tail x)
+
+    let reconstructed = stringReconstruction k dnas
+
+    areEqual "GGCTTACCA" reconstructed
