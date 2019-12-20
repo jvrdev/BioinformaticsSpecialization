@@ -97,8 +97,10 @@ with
         let added, recordsPrime = Seq.fold folder zero records
         AdjacencyList <| if added then recordsPrime else (src, [dst]) :: records
             
-type Walk<'a when 'a : equality> = Walk of list<'a>
+type Walk<'t> = Walk of list<'t>
 with
+    static member map (f : 'u -> 'v) (Walk x : Walk<'u>) : Walk<'v> = 
+        x |> List.map f |> Walk
     // print with -> as separator
     static member print (printElem : 'a -> string) (Walk x) =
         x
@@ -193,11 +195,14 @@ let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
     let i = ws |> Seq.findIndex ((=)dst)
     Walk.rotate i walk
 
+let pathToGenome (walk : Walk<seq<'a>>) : seq<'a> =
+    let kmers = Walk.toArray walk
+    Seq.append (Seq.head kmers) (Seq.tail kmers |> Seq.collect (Seq.last >> Seq.singleton))
+
 let stringReconstruction (k : int) (kmers : seq<string>) : string =
     let db = deBruijnGraph (Seq.toArray >> System.String) k kmers |> DirectedGraph.map (Seq.toArray >> System.String)
-    let path = eulerPath db
-    let steps = Walk.toArray path
-    System.String.Concat steps
+    let path = eulerPath db |> Walk.map seq
+    pathToGenome path |> Seq.toArray |> System.String
 
 let runOnFile f path =
     let input = System.IO.File.ReadAllText path
