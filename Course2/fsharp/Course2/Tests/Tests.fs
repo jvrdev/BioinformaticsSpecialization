@@ -146,14 +146,22 @@ let ``string reconstruction`` () =
      GCTT
      TTAC"""
 
-    let k, dnas =
-        text
-        |> splitLines
-        |> Seq.map trim
-        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
-        |> Seq.toArray
-        |> (fun x -> Array.head x |> int, Array.tail x)
-
+    let k, dnas = readStringReconstruction text
     let reconstructed = stringReconstruction k dnas
 
     areEqual "GGCTTACCA" reconstructed
+
+[<Test>]
+let ``generate combinations`` () =
+    let combinations = mkCombinations ["0"; "1"] 3
+
+    areEqual 8 (Seq.length combinations)
+    areEqual 3 (Seq.length <| Seq.head combinations)
+
+[<Test>]
+let ``cycle reconstruction`` () =
+    let k = 3
+
+    let actual = kUniversalCircularString k
+
+    areEqual "10001011" actual

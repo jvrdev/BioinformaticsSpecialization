@@ -200,9 +200,43 @@ let pathToGenome (walk : Walk<seq<'a>>) : seq<'a> =
     Seq.append (Seq.head kmers) (Seq.tail kmers |> Seq.collect (Seq.last >> Seq.singleton))
 
 let stringReconstruction (k : int) (kmers : seq<string>) : string =
-    let db = deBruijnGraph (Seq.toArray >> System.String) k kmers |> DirectedGraph.map (Seq.toArray >> System.String)
+    let db = 
+        deBruijnGraph (Seq.toArray >> System.String) k kmers 
+        |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerPath db |> Walk.map seq
     pathToGenome path |> Seq.toArray |> System.String
+
+let cycleReconstruction (k : int) (kmers : seq<string>) : string =
+    let db = 
+        deBruijnGraph (Seq.toArray >> System.String) k kmers 
+        |> DirectedGraph.map (Seq.toArray >> System.String)
+    let path = eulerCycle db |> Walk.map seq
+    pathToGenome path |> Seq.toArray |> System.String |> (fun s -> s.Substring(0, s.Length - k + 1))
+
+let mkCombinations (xs : list<'a>) (length : int) : seq<'a[]> =
+    let rec step (acc : list<list<'a>>) n : list<list<'a>> = 
+        if n = 1 
+        then acc
+        else 
+            step 
+                (acc |> List.collect (fun u -> xs |> List.map (fun v -> v :: u)))
+                (n - 1)
+    if length < 1
+    then Seq.empty
+    else
+        step (List.map List.singleton xs) length
+        |> Seq.map List.toArray
+
+let kUniversalCircularString (k : int) : string =
+    let kmers = mkCombinations ['0'; '1'] k |> Seq.map System.String
+    cycleReconstruction k kmers
+   
+let readStringReconstruction =
+    splitLines
+    >> Seq.map trim
+    >> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+    >> Seq.toArray
+    >> (fun x -> Array.head x |> int, Array.tail x)
 
 let runOnFile f path =
     let input = System.IO.File.ReadAllText path
@@ -214,7 +248,12 @@ let runEuler (x : string) : string =
     let walk = eulerPath graph
     Walk.print string walk
 
+let runStringReconstruction (x : string) : string =
+    let k, dnas = readStringReconstruction x
+    stringReconstruction k dnas
+
 [<EntryPoint>] 
 let main argv =
-    runOnFile runEuler """C:\src\BioinformaticsSpecialization\Course2\dataset_203_6.txt"""
+    printfn "%s" <| kUniversalCircularString 8
+    //runOnFile runStringReconstruction """C:\src\BioinformaticsSpecialization\Course2\dataset_203_7.txt"""
     0
