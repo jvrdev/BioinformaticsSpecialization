@@ -165,3 +165,24 @@ let ``cycle reconstruction`` () =
     let actual = kUniversalCircularString k
 
     areEqual "10001011" actual
+
+[<Test>]
+let ``paired composition`` () =
+    let actual = pairedComposition 3 2 ("TAATGCCATGGGATGTT".ToCharArray()) |> printComposition string
+
+    areEqual "(AAT|CAT) (ATG|ATG) (ATG|ATG) (CAT|GAT) (CCA|GGA) (GCC|GGG) (GGG|GTT) (TAA|CCA) (TGC|TGG) (TGG|TGT)" actual
+
+[<Test>]
+let ``string spelled by gapped patterns`` () =
+    let input = """4 2
+    GACC|GCGC
+    ACCG|CGCC
+    CCGA|GCCG
+    CGAG|CCGG
+    GAGC|CGGA"""
+
+    let k, d, pairs = readGappedPatterns input
+
+    let actual = stringSpelledByGappedPatterns k d pairs
+
+    areEqual (Some "GACCGAGCGCCGGA") (actual |> Option.map System.String)

@@ -1,4 +1,7 @@
-﻿
+﻿let sequenceEquals<'a when 'a : equality> (us : seq<'a>) (vs : seq<'a>) : bool =
+    (Seq.length us) = (Seq.length vs) &&
+        Seq.zip us vs |> Seq.forall (fun (a, b) -> a = b)
+
 let splitS (separator : string) (s : string) : string[] =
     s.Split ([|separator|], System.StringSplitOptions.None)
 
@@ -230,13 +233,64 @@ let mkCombinations (xs : list<'a>) (length : int) : seq<'a[]> =
 let kUniversalCircularString (k : int) : string =
     let kmers = mkCombinations ['0'; '1'] k |> Seq.map System.String
     cycleReconstruction k kmers
-   
+
+let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : option<'a[]> =
+    let l = Seq.length xs + k - 1
+    let first = xs |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (Array.last x)) |> Seq.collect id
+    let second = xs |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (Array.last x)) |> Seq.collect id
+    let overlapFirst = first |> Seq.skip (k + d)
+    let overlapSecond = second |> Seq.take (l - k - d)
+
+    if sequenceEquals overlapFirst overlapSecond then
+        let prefix = first
+        let suffix = second |> Seq.skip (l - k - d)
+        Seq.append prefix suffix |> Seq.toArray |> Some
+    else 
+        None
+
+let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
+    xs |> Seq.map print |> System.String.Concat
+
+let printComposition (print : 'a -> string) (xs : seq<'a[]*'a[]>) : string =
+    xs 
+    |> Seq.map (fun (a, b) -> sprintf "(%s|%s)" (printSeq print a) (printSeq print b) )
+    |> String.concat " "
+
+let pairedComposition (k : int) (d : int) (xs : 'a[]) : seq<'a[]*'a[]> =
+    let segment = System.ArraySegment xs
+    let compositionAt i = segment.Slice(i, k).ToArray (), segment.Slice(i + k + d, k).ToArray ()
+    [0 .. xs.Length - (k + k + d)]
+    |> Seq.map compositionAt
+    |> Seq.sort
+    |> Seq.toArray
+    |> seq
+
 let readStringReconstruction =
     splitLines
     >> Seq.map trim
     >> Seq.filter (not << System.String.IsNullOrWhiteSpace)
     >> Seq.toArray
     >> (fun x -> Array.head x |> int, Array.tail x)
+
+let readGappedPattern (s : string) = 
+    match s.Split '|' with
+    | [|first; second|] -> first.ToCharArray(), second.ToCharArray()
+    | _ -> invalidArg "s" "unexpected number of | on input"
+
+let readGappedPatterns = 
+    splitLines
+    >> Seq.map trim
+    >> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+    >> Seq.toList
+    >> function
+       | numbers::rest -> 
+            let k, d = 
+                match numbers.Split ' ' with
+                | [|a; b|] -> int a, int b
+                | _ -> invalidArg "x" "unexpected number of ' ' on input"
+            let pairs = List.map readGappedPattern rest 
+            k, d, pairs
+       | _ -> invalidArg "x" "unexpected number of lines received"
 
 let runOnFile f path =
     let input = System.IO.File.ReadAllText path
