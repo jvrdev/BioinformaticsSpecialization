@@ -236,8 +236,14 @@ let kUniversalCircularString (k : int) : string =
 
 let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : option<'a[]> =
     let l = Seq.length xs + k - 1
-    let first = xs |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (Array.last x)) |> Seq.collect id
-    let second = xs |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (Array.last x)) |> Seq.collect id
+    let first = 
+        xs 
+        |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (Array.last x))
+        |> Seq.collect id
+    let second =
+        xs 
+        |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (Array.last x))
+        |> Seq.collect id
     let overlapFirst = first |> Seq.skip (k + d)
     let overlapSecond = second |> Seq.take (l - k - d)
 
@@ -247,6 +253,18 @@ let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : op
         Seq.append prefix suffix |> Seq.toArray |> Some
     else 
         None
+
+let maximalNonBranchingPaths (AdjacencyList entries : DirectedGraph<'a> as graph) : Walk<'a>[] =
+    let grades = DirectedGraph.grades graph
+    let rec step (AdjacencyList g) (acc : list<Walk<'a>>) : list<Walk<'a>> =
+        match g with
+        | [] -> acc
+        | (src, _)::t -> 
+            let grades = Map.find src grades
+
+            let gPrime, walk = walkNonBranchingPath g
+
+    [||]
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
     xs |> Seq.map print |> System.String.Concat
@@ -297,6 +315,13 @@ let runOnFile f path =
     let result = f input
     System.IO.File.WriteAllText ("result.txt", result, System.Text.Encoding.ASCII)
 
+let runStringSpelledByGappedPatterns (s : string) : string =
+    let k, d, pairs = readGappedPatterns s
+
+    let result = stringSpelledByGappedPatterns k d pairs
+
+    result |> Option.map System.String |> Option.defaultValue ""
+
 let runEuler (x : string) : string =
     let graph = DirectedGraph.parse int x
     let walk = eulerPath graph
@@ -308,6 +333,5 @@ let runStringReconstruction (x : string) : string =
 
 [<EntryPoint>] 
 let main argv =
-    printfn "%s" <| kUniversalCircularString 8
-    //runOnFile runStringReconstruction """C:\src\BioinformaticsSpecialization\Course2\dataset_203_7.txt"""
+    runOnFile runStringSpelledByGappedPatterns """C:\src\BioinformaticsSpecialization\Course2\dataset_6206_4.txt"""
     0

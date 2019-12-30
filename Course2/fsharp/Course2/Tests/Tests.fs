@@ -186,3 +186,27 @@ let ``string spelled by gapped patterns`` () =
     let actual = stringSpelledByGappedPatterns k d pairs
 
     areEqual (Some "GACCGAGCGCCGGA") (actual |> Option.map System.String)
+
+
+[<Test>]
+let ``maximal non-braching paths`` () =
+    let input = """1 -> 2
+    2 -> 3
+    3 -> 4,5
+    6 -> 7
+    7 -> 6"""
+
+    let graph = DirectedGraph.parse int input
+    let actual = maximalNonBranchingPaths graph
+    let formatted = 
+        actual
+        |> Seq.map (Walk.print string)
+        |> Seq.sort
+        |> String.concat "\r\n"
+
+    let expected = """1->2->3
+3->4
+3->5
+7->6->7"""
+    areEqual expected formatted
+
