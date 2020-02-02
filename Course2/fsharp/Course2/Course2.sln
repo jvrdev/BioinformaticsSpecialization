@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29609.76
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Runner", "Course2\Runner.fsproj", "{6F3883B8-0C4E-4BFA-A973-1C8DE0704DA6}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Runner", "Runner\Runner.fsproj", "{6F3883B8-0C4E-4BFA-A973-1C8DE0704DA6}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{BE0FD3A5-8D32-4E63-B5D8-7A56D11AFD28}"
 EndProject
