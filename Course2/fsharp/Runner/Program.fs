@@ -254,16 +254,23 @@ let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : op
     else 
         None
 
+let walkNonBranchingPaths (AdjacencyList edges : DirectedGraph<'a> as graph) (vertex : 'a) :
+    DirectedGraph<'a> * list<Walk<'a>> = 
+    AdjacencyList edges, []
+
 let maximalNonBranchingPaths (AdjacencyList entries : DirectedGraph<'a> as graph) : Walk<'a>[] =
-    let grades = DirectedGraph.grades graph
-    let rec step (AdjacencyList g) (acc : list<Walk<'a>>) : list<Walk<'a>> =
-        match g with
+    let grades = DirectedGraph<_>.grades graph
+    let rec step (vertices : list<'a>) (edges : DirectedGraph<'a>) (acc : list<Walk<'a>>) : list<Walk<'a>> =
+        match vertices with
         | [] -> acc
-        | (src, _)::t -> 
-            let grades = Map.find src grades
-
-            let gPrime, walk = walkNonBranchingPath g
-
+        | h::t -> 
+            let grade = Map.find h grades
+            if grade <> { InGrade = 1; OutGrade = 1} && grade.OutGrade > 0
+            then 
+                let edgesNext, walks = walkNonBranchingPaths edges h
+                step t edgesNext (walks @ acc)
+            else
+                step t edges acc
     [||]
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
