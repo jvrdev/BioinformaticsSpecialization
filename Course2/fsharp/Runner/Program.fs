@@ -431,7 +431,17 @@ let runStringReconstruction (x : string) : string =
     let k, dnas = readStringReconstruction x
     stringReconstruction k dnas
 
+let runMaximalNonBranchingPaths (x : string) : string =
+    let graph = DirectedGraph.parse int x
+    let actual = maximalNonBranchingPaths graph
+    let formatted = 
+        actual
+        |> Seq.map (Walk.print string)
+        |> Seq.sort
+        |> String.concat "\r\n"
+    formatted
+
 [<EntryPoint>] 
 let main argv =
-    runOnFile runStringSpelledByGappedPatterns """C:\src\BioinformaticsSpecialization\Course2\dataset_6206_4.txt"""
+    runOnFile runMaximalNonBranchingPaths """C:\src\BioinformaticsSpecialization\Course2\dataset_6207_2.txt"""
     0
