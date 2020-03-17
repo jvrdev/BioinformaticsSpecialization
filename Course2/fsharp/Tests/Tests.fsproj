@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Course2\Runner.fsproj" />
+    <ProjectReference Include="..\Runner\Runner.fsproj" />
   </ItemGroup>
 
 </Project>
