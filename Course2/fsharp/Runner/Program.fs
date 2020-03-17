@@ -329,19 +329,42 @@ let walkNonBranchingPaths (grades : Map<'a, Grade>) (AdjacencyList edges : Direc
 
 let maximalNonBranchingPaths (AdjacencyList entries : DirectedGraph<'a> as graph) : Walk<'a>[] =
     let grades = DirectedGraph.grades graph
-    let rec step (vertices : list<'a>) (edges : DirectedGraph<'a>) (acc : list<Walk<'a>>) : list<Walk<'a>> =
+    let rec stepNonCycles (vertices : list<'a>) (edges : DirectedGraph<'a>) (acc : list<Walk<'a>>)
+        : DirectedGraph<'a> * list<Walk<'a>> =
         match vertices with
-        | [] -> acc
+        | [] -> edges, acc
         | h::t -> 
             let grade = Map.find h grades
             if grade <> { InGrade = 1; OutGrade = 1} && grade.OutGrade > 0
             then 
                 let edgesNext, walks = walkNonBranchingPaths grades edges h
-                step t edgesNext (walks @ acc)
+                stepNonCycles t edgesNext (walks @ acc)
             else
-                step t edges acc
-    step (DirectedGraph.vertices graph) graph []
-    |> List.toArray
+                stepNonCycles t edges acc
+    let nonCyclesGraph, nonCycles = stepNonCycles (DirectedGraph.vertices graph) graph []
+    let rec stepCycles (edges : DirectedGraph<'a>) (acc : list<Walk<'a>>)
+        : list<Walk<'a>> =
+        let rec step (g : DirectedGraph<'a>, w : Walk<'a>) 
+            : DirectedGraph<'a> * Walk<'a> =
+            match Walk.lastNode w with
+            | Some src -> 
+                let maybeEdge, g2 = DirectedGraph.walkFirstEdge src g
+                match maybeEdge with
+                | Some (_, dst) -> step (g2, Walk.append dst w)
+                | None -> g2, w           
+            | None -> failwithf "Walk %A is empty" acc
+        match DirectedGraph.takeFirst edges with
+        | Some node ->
+            let maybeEdge, edges2 = DirectedGraph.walkFirstEdge node edges
+            match maybeEdge with
+            | Some edge ->
+                let walk = Walk.ofStartEdge edge
+                let edges3, walk2 = step (edges2, walk)
+                stepCycles edges3 (walk2 :: acc)
+            | None -> failwithf "Edge for node %A was not found" node
+        | None -> acc
+    let cycles = stepCycles nonCyclesGraph []
+    nonCycles @ cycles |> List.toArray
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
     xs |> Seq.map print |> System.String.Concat
