@@ -26,6 +26,8 @@ module Edge =
     let source (a, _) = a
     let destination (_, b) = b
 
+type ReadPair<'t> = 't * 't
+
 type Walk<'t> = Walk of list<'t>
 
 module Walk = 
@@ -192,19 +194,37 @@ module DirectedGraph =
         |> Seq.distinct
         |> Seq.toList
 
-  
-let deBruijnGraph<'t, 'a, 'c when 't :> seq<'a> and 'c : comparison >
-    (comparer : seq<'a> -> 'c)
-    (k : int)
-    (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
-    let toEdge (x : seq<'a>) = (x |> Seq.take (k - 1), x |> Seq.skip 1)
+type DeBruijnable<'t, 'c when 'c : comparison> = {
+    Comparer : 't -> 'c
+    Prefix : 't -> 't
+    Suffix : 't -> 't
+}
+
+let deBruijnGraphGeneric 
+    (ops : DeBruijnable<'t, 'c>)
+    (kmers : seq<'t>)
+    : DirectedGraph<'t> =
     let entries = 
         kmers
-        |> Seq.map toEdge
-        |> Seq.groupBy (fst >> comparer)
+        |> Seq.map (fun x -> ops.Prefix x, ops.Suffix x)
+        |> Seq.groupBy (fst >> ops.Comparer)
         |> Seq.map (fun (_, dsts) -> dsts |> Seq.head |> fst, dsts |> Seq.map snd |> Seq.toList)
         |> Seq.toList
     AdjacencyList entries
+
+let mkDebruijnableSeqChar (k : int) =
+    {
+        Comparer = Seq.toArray >> System.String
+        Prefix = Seq.take (k - 1)
+        Suffix = Seq.skip 1
+    }
+
+let mkDebruijnableString (k : int) : DeBruijnable<string, string>=
+    {
+        Comparer = id
+        Prefix = fun s -> s.Substring (0, k - 1)
+        Suffix = fun s -> s.Substring (1, k - 1)
+    }
 
 let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> * DirectedGraph<'a> =
     match walk with
@@ -255,14 +275,14 @@ let pathToGenome (walk : Walk<seq<'a>>) : seq<'a> =
 
 let stringReconstruction (k : int) (kmers : seq<string>) : string =
     let db = 
-        deBruijnGraph (Seq.toArray >> System.String) k kmers 
+        deBruijnGraphGeneric (mkDebruijnableString k) kmers 
         |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerPath db |> Walk.map seq
     pathToGenome path |> Seq.toArray |> System.String
 
 let cycleReconstruction (k : int) (kmers : seq<string>) : string =
     let db = 
-        deBruijnGraph (Seq.toArray >> System.String) k kmers 
+        deBruijnGraphGeneric (mkDebruijnableString k) kmers 
         |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerCycle db |> Walk.map seq
     pathToGenome path |> Seq.toArray |> System.String |> (fun s -> s.Substring(0, s.Length - k + 1))
@@ -285,15 +305,29 @@ let kUniversalCircularString (k : int) : string =
     let kmers = mkCombinations ['0'; '1'] k |> Seq.map System.String
     cycleReconstruction k kmers
 
-let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : option<'a[]> =
+type Reconstructable<'t, 'e> = {
+    Last : 't -> 'e
+    Join : seq<'e> -> 't
+}
+
+let reconstructableOfArray = {
+    Last = Array.last
+    Join = Array.ofSeq
+}
+
+let stringSpelledByReadPairs 
+    (ops : Reconstructable<'t, 'e>) 
+    (k : int, d : int) 
+    (xs : seq<ReadPair<'t>>)
+    : option<'t> =
     let l = Seq.length xs + k - 1
     let first = 
         xs 
-        |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (Array.last x))
+        |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (ops.Last x))
         |> Seq.collect id
     let second =
         xs 
-        |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (Array.last x))
+        |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (ops.Last x))
         |> Seq.collect id
     let overlapFirst = first |> Seq.skip (k + d)
     let overlapSecond = second |> Seq.take (l - k - d)
@@ -301,11 +335,11 @@ let stringSpelledByGappedPatterns (k : int) (d : int) (xs : seq<'a[]*'a[]>) : op
     if sequenceEquals overlapFirst overlapSecond then
         let prefix = first
         let suffix = second |> Seq.skip (l - k - d)
-        Seq.append prefix suffix |> Seq.toArray |> Some
+        Seq.append prefix suffix |> ops.Join |> Some
     else 
         None
 
-let walkNonBranchingPaths (grades : Map<'a, Grade>) (AdjacencyList edges : DirectedGraph<'a> as graph) (vertex : 'a) :
+let walkNonBranchingPaths (grades : Map<'a, Grade>) (graph : DirectedGraph<'a>) (vertex : 'a) :
     DirectedGraph<'a> * list<Walk<'a>> = 
     let dstEdges = DirectedGraph.edges vertex graph
     let rec stepWithinDstEdge (graph : DirectedGraph<'a>, acc : Walk<'a>) : DirectedGraph<'a> * Walk<'a> =
@@ -374,14 +408,20 @@ let contigGeneration (kmers : seq<string>) : seq<string> =
     | None -> Seq.empty
     | Some kmer -> 
         let k = kmer.Length
-        let graph = deBruijnGraph (Seq.toArray >> System.String) k kmers
+        let graph = deBruijnGraphGeneric (mkDebruijnableString k) kmers 
         let walks = maximalNonBranchingPaths (graph |> DirectedGraph.map (Seq.toArray >> System.String))
         walks
         |> Seq.map (Walk.map seq >> pathToGenome >> Seq.toArray >> System.String)
         |> Seq.sort
-        
-        
-        
+   
+//let stringReconstructionFromReadPairs 
+//    (debruijnable : DeBruijnable<ReadPair<'t>, 'c>)
+//    (k : int, d : int)
+//    (readPairs : seq<ReadPair<'t>>) 
+//    : 't =
+//    let debruijn = deBruijnGraphGeneric debruijnable readPairs
+//    let cycles = eulerCycle debruijn
+      
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
     xs |> Seq.map print |> System.String.Concat
@@ -435,7 +475,7 @@ let runOnFile f path =
 let runStringSpelledByGappedPatterns (s : string) : string =
     let k, d, pairs = readGappedPatterns s
 
-    let result = stringSpelledByGappedPatterns k d pairs
+    let result = stringSpelledByReadPairs reconstructableOfArray (k, d) pairs
 
     result |> Option.map System.String |> Option.defaultValue ""
 

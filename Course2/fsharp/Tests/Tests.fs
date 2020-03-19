@@ -124,8 +124,7 @@ let ``debruijn graph`` () =
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
     let graph : DirectedGraph<string> = 
-        deBruijnGraph (Seq.toArray >> System.String) k dnas
-        |> DirectedGraph.map (Seq.toArray >> System.String)
+        deBruijnGraphGeneric (mkDebruijnableString k) dnas
         |> DirectedGraph.sort
     let expectedGraphText = """AGG -> GGG
     CAG -> AGG,AGG
@@ -183,7 +182,7 @@ let ``string spelled by gapped patterns`` () =
 
     let k, d, pairs = readGappedPatterns input
 
-    let actual = stringSpelledByGappedPatterns k d pairs
+    let actual = stringSpelledByReadPairs reconstructableOfArray (k, d) pairs
 
     areEqual (Some "GACCGAGCGCCGGA") (actual |> Option.map System.String)
 
