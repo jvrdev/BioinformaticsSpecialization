@@ -31,8 +31,8 @@ type Walk<'t> = Walk of list<'t>
 module Walk = 
     let empty : Walk<'t> = Walk []
     let singleton (x : 'u) : Walk<'u> = Walk [x]
-    let append (node : 'a) (Walk xs) =
-        Walk (node :: xs)
+    let append (vertex : 'a) (Walk xs) =
+        Walk (vertex :: xs)
     let ofStartEdge ((src, dst) : Edge<'u>) : Walk<'u> =
         singleton src |> append dst
     let map (f : 'u -> 'v) (Walk x : Walk<'u>) : Walk<'v> = 
@@ -57,8 +57,8 @@ module Walk =
         |> Seq.map parseElem
         |> Seq.toList
         |> Walk
-    //let has (node : 'a) (Walk xs) =
-    //    List.contains node xs
+    //let has (vertex : 'a) (Walk xs) =
+    //    List.contains vertex xs
     let rotate (n : int) (Walk xs : Walk<'a>) : Walk<'a> =
         let length = List.length xs
         let nPrime = n % length
@@ -83,10 +83,10 @@ module Walk =
 type DirectedGraph<'t> =
     | AdjacencyList of list<'t * list<'t>>
 module DirectedGraph =
-    let startWalk ((edgeSrc, edgeDst) : Edge<'u> as edge) (AdjacencyList records) : DirectedGraph<'u> * Walk<'u> =
+    let startWalk ((edgeSrc, edgeDst) : Edge<'u> as edge) (AdjacencyList entries) : DirectedGraph<'u> * Walk<'u> =
         let walk = Walk.ofStartEdge edge
         let graphMinusEdge =
-            records
+            entries
             |> List.choose (
                 fun (src, dsts) ->
                     if src <> edgeSrc then
@@ -102,18 +102,18 @@ module DirectedGraph =
             |> AdjacencyList
         graphMinusEdge, walk
     let map (f : 'u -> 'v) (g : DirectedGraph<'u>) : DirectedGraph<'v> =
-        let (AdjacencyList records) = g
-        let recordsPrime = 
-            records
+        let (AdjacencyList entries) = g
+        let entriesPrime = 
+            entries
             |> List.map (fun (src, dsts) -> f src, dsts |> List.map f)
-        AdjacencyList recordsPrime
-    let sort (AdjacencyList records : DirectedGraph<'a> when 'a : comparison) =
-        let recordsPrime = 
-            records
+        AdjacencyList entriesPrime
+    let sort (AdjacencyList entries : DirectedGraph<'a> when 'a : comparison) =
+        let entriesPrime = 
+            entries
             |> Seq.map (fun (src, dsts) -> (src, dsts |> List.sort))
             |> Seq.sortBy fst
             |> Seq.toList
-        AdjacencyList recordsPrime
+        AdjacencyList entriesPrime
     let print (printElem : 'a -> string) (AdjacencyList x) =
         x
         |> Seq.map (fun (a, b) -> sprintf "%s -> %s" (printElem a) (b |> Seq.map printElem |> String.concat ","))
@@ -130,38 +130,38 @@ module DirectedGraph =
                 | other -> failwithf "Invalid line format, fields were %A" other))
         |> Seq.toList
         |> AdjacencyList
-    let takeFirst (AdjacencyList records) : option<'a> =
-        match records with
+    let takeFirst (AdjacencyList entries) : option<'a> =
+        match entries with
         | (a, _)::_ -> Some a
         | [] -> None
     let walkFirstEdge<'a when 'a : equality> 
         (src : 'a) 
-        (AdjacencyList records : DirectedGraph<'a>)
+        (AdjacencyList entries : DirectedGraph<'a>)
         : option<Edge<'a>> * DirectedGraph<'a> =
         let zero = (None, [])
-        let folder (edge, newRecords) (recordSrc, recordDsts as record) =
+        let folder (edge, newRecords) (entrySrc, entryDsts as entry) =
             match edge with
-            | Some x -> Some x, record :: newRecords
+            | Some x -> Some x, entry :: newRecords
             | None ->
-                if src = recordSrc
+                if src = entrySrc
                 then 
-                    match recordDsts with
+                    match entryDsts with
                     | [] -> None, newRecords
-                    | [recordDst] -> Some (src, recordDst), newRecords
+                    | [entryDst] -> Some (src, entryDst), newRecords
                     | h :: t -> Some (src, h), (src, t) :: newRecords 
-                else None, record :: newRecords
-        List.fold folder zero records
+                else None, entry :: newRecords
+        List.fold folder zero entries
         |> (fun (a, b) -> a , AdjacencyList b)
-    let isEmpty (AdjacencyList records : DirectedGraph<'a>) : bool =
-        List.isEmpty records
-    let hasEdgesFor<'a when 'a : equality> (node : 'a) (AdjacencyList records : DirectedGraph<'a>) : bool =
-        records
-        |> Seq.exists (fst >> (=)node)
-    let allEdges (AdjacencyList records : DirectedGraph<'a>) : seq<'a * 'a> =
-        records |> Seq.collect (fun (src, dsts) -> dsts |> Seq.map (fun dst -> (src, dst)))
-    let grades<'a when 'a : comparison> (AdjacencyList records : DirectedGraph<'a> as graph) : Map<'a, Grade> =
+    let isEmpty (AdjacencyList entries : DirectedGraph<'a>) : bool =
+        List.isEmpty entries
+    let hasEdgesFor<'a when 'a : equality> (vertex : 'a) (AdjacencyList entries : DirectedGraph<'a>) : bool =
+        entries
+        |> Seq.exists (fst >> (=)vertex)
+    let allEdges (AdjacencyList entries : DirectedGraph<'a>) : seq<'a * 'a> =
+        entries |> Seq.collect (fun (src, dsts) -> dsts |> Seq.map (fun dst -> (src, dst)))
+    let grades<'a when 'a : comparison> (AdjacencyList entries : DirectedGraph<'a> as graph) : Map<'a, Grade> =
         let grades = 
-            records
+            entries
             |> Seq.map (fun (src, dsts) -> src, { InGrade = 0; OutGrade = dsts.Length })
             |> Map.ofSeq
         allEdges graph 
@@ -172,36 +172,39 @@ module DirectedGraph =
                 | None -> Map.add dst { InGrade = 1; OutGrade = 0 } gradesPrime
             )
             grades
-    let edges (vertex : 'a) (AdjacencyList records : DirectedGraph<'a>) : list<Edge<'a>> =
-        records
+    let edges (vertex : 'a) (AdjacencyList entries : DirectedGraph<'a>) : list<Edge<'a>> =
+        entries
         |> List.tryFind (fun (src, _) -> src = vertex)
         |> Option.map (fun (src, dsts) -> dsts |> List.map (fun dst -> src, dst))
         |> Option.toList
         |> List.collect id
-    let add (src : 'a, dst : 'a) (AdjacencyList records : DirectedGraph<'a>) : DirectedGraph<'a> =
+    let add (src : 'a, dst : 'a) (AdjacencyList entries : DirectedGraph<'a>) : DirectedGraph<'a> =
         let zero = (false, [])
-        let folder ((added : bool), (recordsPrime : list<'a * list<'a>>)) (srci : 'a, dstsi : list<'a>) : bool * list<'a * list<'a>> =
+        let folder ((added : bool), (entriesPrime : list<'a * list<'a>>)) (srci : 'a, dstsi : list<'a>) : bool * list<'a * list<'a>> =
             if src = srci 
-            then true, (srci, dst::dstsi) :: recordsPrime
-            else added, (srci, dstsi) :: recordsPrime
-        let added, recordsPrime = Seq.fold folder zero records
-        AdjacencyList <| if added then recordsPrime else (src, [dst]) :: records
-    let vertices (AdjacencyList records : DirectedGraph<'a>) : list<'a> =
-        records
+            then true, (srci, dst::dstsi) :: entriesPrime
+            else added, (srci, dstsi) :: entriesPrime
+        let added, entriesPrime = Seq.fold folder zero entries
+        AdjacencyList <| if added then entriesPrime else (src, [dst]) :: entries
+    let vertices (AdjacencyList entries : DirectedGraph<'a>) : list<'a> =
+        entries
         |> Seq.collect (fun (src, dsts) -> src::dsts)
         |> Seq.distinct
         |> Seq.toList
 
   
-let deBruijnGraph<'t, 'a, 'c when 't :> seq<'a> and 'c : comparison > (comparer : seq<'a> -> 'c) (k : int) (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
+let deBruijnGraph<'t, 'a, 'c when 't :> seq<'a> and 'c : comparison >
+    (comparer : seq<'a> -> 'c)
+    (k : int)
+    (kmers : seq<'t>) : DirectedGraph<seq<'a>> =
     let toEdge (x : seq<'a>) = (x |> Seq.take (k - 1), x |> Seq.skip 1)
-    let records = 
+    let entries = 
         kmers
         |> Seq.map toEdge
         |> Seq.groupBy (fst >> comparer)
         |> Seq.map (fun (_, dsts) -> dsts |> Seq.head |> fst, dsts |> Seq.map snd |> Seq.toList)
         |> Seq.toList
-    AdjacencyList records
+    AdjacencyList entries
 
 let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> * DirectedGraph<'a> =
     match walk with
@@ -327,7 +330,7 @@ let walkNonBranchingPaths (grades : Map<'a, Grade>) (AdjacencyList edges : Direc
             step t (graph2, walk2::acc)
     step dstEdges (graph, [])
 
-let maximalNonBranchingPaths (AdjacencyList entries : DirectedGraph<'a> as graph) : Walk<'a>[] =
+let maximalNonBranchingPaths (graph : DirectedGraph<'a>) : Walk<'a>[] =
     let grades = DirectedGraph.grades graph
     let rec stepNonCycles (vertices : list<'a>) (edges : DirectedGraph<'a>) (acc : list<Walk<'a>>)
         : DirectedGraph<'a> * list<Walk<'a>> =
@@ -354,17 +357,31 @@ let maximalNonBranchingPaths (AdjacencyList entries : DirectedGraph<'a> as graph
                 | None -> g2, w           
             | None -> failwithf "Walk %A is empty" acc
         match DirectedGraph.takeFirst edges with
-        | Some node ->
-            let maybeEdge, edges2 = DirectedGraph.walkFirstEdge node edges
+        | Some vertex ->
+            let maybeEdge, edges2 = DirectedGraph.walkFirstEdge vertex edges
             match maybeEdge with
             | Some edge ->
                 let walk = Walk.ofStartEdge edge
                 let edges3, walk2 = step (edges2, walk)
                 stepCycles edges3 (walk2 :: acc)
-            | None -> failwithf "Edge for node %A was not found" node
+            | None -> failwithf "Edge for vertex %A was not found" vertex
         | None -> acc
     let cycles = stepCycles nonCyclesGraph []
     nonCycles @ cycles |> List.toArray
+
+let contigGeneration (kmers : seq<string>) : seq<string> =
+    match Seq.tryHead kmers with
+    | None -> Seq.empty
+    | Some kmer -> 
+        let k = kmer.Length
+        let graph = deBruijnGraph (Seq.toArray >> System.String) k kmers
+        let walks = maximalNonBranchingPaths (graph |> DirectedGraph.map (Seq.toArray >> System.String))
+        walks
+        |> Seq.map (Walk.map seq >> pathToGenome >> Seq.toArray >> System.String)
+        |> Seq.sort
+        
+        
+        
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
     xs |> Seq.map print |> System.String.Concat
@@ -441,7 +458,17 @@ let runMaximalNonBranchingPaths (x : string) : string =
         |> String.concat "\r\n"
     formatted
 
+let runContigGeneration (x : string) : string =
+    let dnas = 
+        x
+        |> splitLines
+        |> Seq.map trim
+        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+        |> Seq.toArray
+    let output = contigGeneration dnas 
+    String.concat " " output
+
 [<EntryPoint>] 
 let main argv =
-    runOnFile runMaximalNonBranchingPaths """C:\src\BioinformaticsSpecialization\Course2\dataset_6207_2.txt"""
+    runOnFile runContigGeneration """C:\src\BioinformaticsSpecialization\Course2\dataset_205_5.txt"""
     0

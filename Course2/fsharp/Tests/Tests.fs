@@ -210,3 +210,25 @@ let ``maximal non-braching paths`` () =
 7->6->7"""
     areEqual expected formatted
 
+    
+[<Test>]
+let ``contig generation`` () =
+    let text = """ATG
+ATG
+TGT
+TGG
+CAT
+GGA
+GAT
+AGA"""
+        
+    let dnas = 
+        text
+        |> splitLines
+        |> Seq.map trim
+        |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
+        |> Seq.toArray
+    let output = contigGeneration dnas 
+    let expectedOutput = """AGA ATG ATG CAT GAT TGGA TGT"""
+    let formattedOutput = String.concat " " output
+    areEqual expectedOutput formattedOutput
