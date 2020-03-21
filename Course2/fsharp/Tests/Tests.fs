@@ -124,7 +124,7 @@ let ``debruijn graph`` () =
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
     let graph : DirectedGraph<string> = 
-        deBruijnGraphGeneric (mkDebruijnableString k) dnas
+        deBruijnGraphGeneric (DeBruijnable.Instances.mkString k) dnas
         |> DirectedGraph.sort
     let expectedGraphText = """AGG -> GGG
     CAG -> AGG,AGG
@@ -182,7 +182,7 @@ let ``string spelled by gapped patterns`` () =
 
     let k, d, pairs = readGappedPatterns input
 
-    let actual = stringSpelledByReadPairs reconstructableOfArray (k, d) pairs
+    let actual = stringSpelledByReadPairs Reconstructable.Instances.array (k, d) pairs
 
     areEqual (Some "GACCGAGCGCCGGA") (actual |> Option.map System.String)
 
@@ -231,3 +231,28 @@ AGA"""
     let expectedOutput = """AGA ATG ATG CAT GAT TGGA TGT"""
     let formattedOutput = String.concat " " output
     areEqual expectedOutput formattedOutput
+
+
+[<Test>]
+let ``String Reconstruction from Read-Pairs Problem`` () =
+    let input = """4 2
+GAGA|TTGA
+TCGT|GATG
+CGTG|ATGT
+TGGT|TGAG
+GTGA|TGTT
+GTGG|GTGA
+TGAG|GTTG
+GGTC|GAGA
+GTCG|AGAT"""
+    
+    let k, d, pairs = readGappedPatterns input
+    
+    let actual =
+        stringReconstructionFromReadPairs
+            (DeBruijnable.Instances.mkReadPairString k)
+            (Reconstructable.Instances.string)
+            (k, d) 
+            (pairs |> Seq.map (ReadPair.map System.String))
+    
+    areEqual "GTGGTCGTGAGATGTTGA" actual

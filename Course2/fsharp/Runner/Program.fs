@@ -27,6 +27,8 @@ module Edge =
     let destination (_, b) = b
 
 type ReadPair<'t> = 't * 't
+module ReadPair = 
+    let map f (a, b) = f a, f b
 
 type Walk<'t> = Walk of list<'t>
 
@@ -51,8 +53,9 @@ module Walk =
         |> Seq.rev
         |> Seq.map printElem
         |> System.String.Concat
-    let toArray (Walk x) =
-        x |> Seq.rev |> Seq.toArray
+    let toSeq (Walk x) =
+        x |> Seq.rev
+    let toArray = toSeq >> Seq.toArray
     let parse (parseElem : string -> 'a) (s : string) : Walk<'a> =
         s
         |> splitS " -> "
@@ -200,6 +203,30 @@ type DeBruijnable<'t, 'c when 'c : comparison> = {
     Suffix : 't -> 't
 }
 
+module DeBruijnable =
+    module Instances =
+        let mkSeqChar (k : int) =
+            {
+                Comparer = Seq.toArray >> System.String
+                Prefix = Seq.take (k - 1)
+                Suffix = Seq.skip 1
+            }
+        
+        let mkString (k : int) : DeBruijnable<string, string>=
+            {
+                Comparer = id
+                Prefix = fun s -> s.Substring (0, k - 1)
+                Suffix = fun s -> s.Substring (1, k - 1)
+            }
+        
+        // easy to have it not be just for strings but it does make things easier
+        let mkReadPairString (k : int) : DeBruijnable<ReadPair<string>, string> =
+            {
+                Comparer = fun (a, b) -> a + b
+                Prefix = ReadPair.map (fun s -> s.Substring (0, k - 1))
+                Suffix = ReadPair.map (fun s -> s.Substring (1, k - 1))
+            }
+
 let deBruijnGraphGeneric 
     (ops : DeBruijnable<'t, 'c>)
     (kmers : seq<'t>)
@@ -211,20 +238,6 @@ let deBruijnGraphGeneric
         |> Seq.map (fun (_, dsts) -> dsts |> Seq.head |> fst, dsts |> Seq.map snd |> Seq.toList)
         |> Seq.toList
     AdjacencyList entries
-
-let mkDebruijnableSeqChar (k : int) =
-    {
-        Comparer = Seq.toArray >> System.String
-        Prefix = Seq.take (k - 1)
-        Suffix = Seq.skip 1
-    }
-
-let mkDebruijnableString (k : int) : DeBruijnable<string, string>=
-    {
-        Comparer = id
-        Prefix = fun s -> s.Substring (0, k - 1)
-        Suffix = fun s -> s.Substring (1, k - 1)
-    }
 
 let rec walkUntilCycle (graph : DirectedGraph<'a>) (walk : Walk<'a>) : Walk<'a> * DirectedGraph<'a> =
     match walk with
@@ -269,20 +282,36 @@ let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
     let i = ws |> Seq.findIndex ((=)dst)
     Walk.rotate i walk
 
+let allEulerianCycles (graph : DirectedGraph<'a>) : seq<Walk<'a>> = 
+    let eulerize (g : DirectedGraph<'a>) =
+        [g]
+        let grades = DirectedGraph.grades g
+        if grades |> Map.toSeq |> Seq.map snd |> Seq.forall ((=){InGrade=1;OutGrade=1})
+        then [g]
+        else
+            
+    let graphs =
+        [graph]
+        |> List.collect (eulerize)
+
+    graph |> List.map eulerCycle
+
+
+
 let pathToGenome (walk : Walk<seq<'a>>) : seq<'a> =
     let kmers = Walk.toArray walk
     Seq.append (Seq.head kmers) (Seq.tail kmers |> Seq.collect (Seq.last >> Seq.singleton))
 
 let stringReconstruction (k : int) (kmers : seq<string>) : string =
     let db = 
-        deBruijnGraphGeneric (mkDebruijnableString k) kmers 
+        deBruijnGraphGeneric (DeBruijnable.Instances.mkString k) kmers 
         |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerPath db |> Walk.map seq
     pathToGenome path |> Seq.toArray |> System.String
 
 let cycleReconstruction (k : int) (kmers : seq<string>) : string =
     let db = 
-        deBruijnGraphGeneric (mkDebruijnableString k) kmers 
+        deBruijnGraphGeneric (DeBruijnable.Instances.mkString k) kmers 
         |> DirectedGraph.map (Seq.toArray >> System.String)
     let path = eulerCycle db |> Walk.map seq
     pathToGenome path |> Seq.toArray |> System.String |> (fun s -> s.Substring(0, s.Length - k + 1))
@@ -305,29 +334,38 @@ let kUniversalCircularString (k : int) : string =
     let kmers = mkCombinations ['0'; '1'] k |> Seq.map System.String
     cycleReconstruction k kmers
 
-type Reconstructable<'t, 'e> = {
-    Last : 't -> 'e
-    Join : seq<'e> -> 't
+type Reconstructable<'container, 'element> = {
+    ToSeq : 'container -> seq<'element>
+    Last : 'container -> 'element
+    OfSeq : seq<'element> -> 'container
 }
 
-let reconstructableOfArray = {
-    Last = Array.last
-    Join = Array.ofSeq
-}
+module Reconstructable =
+    module Instances =
+        let array = {
+            ToSeq = Array.toSeq
+            Last = Array.last
+            OfSeq = Array.ofSeq
+        }
+        let string : Reconstructable<string, char> = {
+            ToSeq = seq
+            Last = fun s -> s.[s.Length - 1]
+            OfSeq = Seq.toArray >> System.String
+        }
 
 let stringSpelledByReadPairs 
-    (ops : Reconstructable<'t, 'e>) 
+    (ops : Reconstructable<'container, 'element>) 
     (k : int, d : int) 
-    (xs : seq<ReadPair<'t>>)
-    : option<'t> =
+    (xs : seq<ReadPair<'container>>)
+    : option<'container> =
     let l = Seq.length xs + k - 1
     let first = 
         xs 
-        |> Seq.mapi (fun i (x, _) -> if i = 0 then seq x else Seq.singleton (ops.Last x))
+        |> Seq.mapi (fun i (x, _) -> if i = 0 then ops.ToSeq x else Seq.singleton (ops.Last x))
         |> Seq.collect id
     let second =
         xs 
-        |> Seq.mapi (fun i (_, x) -> if i = 0 then seq x else Seq.singleton (ops.Last x))
+        |> Seq.mapi (fun i (_, x) -> if i = 0 then ops.ToSeq x else Seq.singleton (ops.Last x))
         |> Seq.collect id
     let overlapFirst = first |> Seq.skip (k + d)
     let overlapSecond = second |> Seq.take (l - k - d)
@@ -335,7 +373,7 @@ let stringSpelledByReadPairs
     if sequenceEquals overlapFirst overlapSecond then
         let prefix = first
         let suffix = second |> Seq.skip (l - k - d)
-        Seq.append prefix suffix |> ops.Join |> Some
+        Seq.append prefix suffix |> ops.OfSeq |> Some
     else 
         None
 
@@ -408,20 +446,29 @@ let contigGeneration (kmers : seq<string>) : seq<string> =
     | None -> Seq.empty
     | Some kmer -> 
         let k = kmer.Length
-        let graph = deBruijnGraphGeneric (mkDebruijnableString k) kmers 
+        let graph = deBruijnGraphGeneric (DeBruijnable.Instances.mkString k) kmers 
         let walks = maximalNonBranchingPaths (graph |> DirectedGraph.map (Seq.toArray >> System.String))
         walks
         |> Seq.map (Walk.map seq >> pathToGenome >> Seq.toArray >> System.String)
         |> Seq.sort
    
-//let stringReconstructionFromReadPairs 
-//    (debruijnable : DeBruijnable<ReadPair<'t>, 'c>)
-//    (k : int, d : int)
-//    (readPairs : seq<ReadPair<'t>>) 
-//    : 't =
-//    let debruijn = deBruijnGraphGeneric debruijnable readPairs
-//    let cycles = eulerCycle debruijn
-      
+let stringReconstructionFromReadPairs 
+    (debruijnable : DeBruijnable<ReadPair<'t>, 'c>)
+    (reconstructable : Reconstructable<'t, 'a>)
+    (k : int, d : int)
+    (readPairs : seq<ReadPair<'t>>) 
+    
+    : 't =
+    let debruijn = deBruijnGraphGeneric debruijnable readPairs
+    let cycle = eulerCycle debruijn
+    let reconstructed = 
+        stringSpelledByReadPairs
+            reconstructable
+            (k, d)
+            (Walk.toSeq cycle)
+    match reconstructed with
+    | Some x -> x
+    | None -> failwithf "No string could be reconstructed from %A" cycle
 
 let printSeq (print : 'a -> string) (xs : seq<'a>) : string =
     xs |> Seq.map print |> System.String.Concat
@@ -475,7 +522,7 @@ let runOnFile f path =
 let runStringSpelledByGappedPatterns (s : string) : string =
     let k, d, pairs = readGappedPatterns s
 
-    let result = stringSpelledByReadPairs reconstructableOfArray (k, d) pairs
+    let result = stringSpelledByReadPairs Reconstructable.Instances.array (k, d) pairs
 
     result |> Option.map System.String |> Option.defaultValue ""
 
