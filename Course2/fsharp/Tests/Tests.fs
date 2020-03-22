@@ -234,7 +234,7 @@ AGA"""
 
 
 [<Test>]
-let ``String Reconstruction from Read-Pairs Problem`` () =
+let ``string Reconstruction from Read-Pairs Problem`` () =
     let input = """4 2
 GAGA|TTGA
 TCGT|GATG

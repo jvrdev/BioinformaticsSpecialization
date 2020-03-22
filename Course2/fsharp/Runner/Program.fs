@@ -85,8 +85,13 @@ module Walk =
         | [] -> None
         | h::t -> Some h
 
+type AdjacencyListEntry<'t> = 't * list<'t>
+module AdjacencyListEntry =
+    let edges (src, dsts) : seq<Edge<'t>> = 
+        dsts |> Seq.map (fun dst -> (src, dst))
+
 type DirectedGraph<'t> =
-    | AdjacencyList of list<'t * list<'t>>
+    | AdjacencyList of list<AdjacencyListEntry<'t>>
 module DirectedGraph =
     let startWalk ((edgeSrc, edgeDst) : Edge<'u> as edge) (AdjacencyList entries) : DirectedGraph<'u> * Walk<'u> =
         let walk = Walk.ofStartEdge edge
@@ -122,7 +127,7 @@ module DirectedGraph =
     let print (printElem : 'a -> string) (AdjacencyList x) =
         x
         |> Seq.map (fun (a, b) -> sprintf "%s -> %s" (printElem a) (b |> Seq.map printElem |> String.concat ","))
-        |> String.concat "\n"
+        |> String.concat "\r\n"
     let parse (parseNode : string -> 'a) (s : string) : DirectedGraph<'a> =
         let lines = splitLines s
         lines 
@@ -162,8 +167,22 @@ module DirectedGraph =
     let hasEdgesFor<'a when 'a : equality> (vertex : 'a) (AdjacencyList entries : DirectedGraph<'a>) : bool =
         entries
         |> Seq.exists (fst >> (=)vertex)
-    let allEdges (AdjacencyList entries : DirectedGraph<'a>) : seq<'a * 'a> =
-        entries |> Seq.collect (fun (src, dsts) -> dsts |> Seq.map (fun dst -> (src, dst)))
+    let allEdgesFrom (vertex : 'a) (AdjacencyList entries : DirectedGraph<'a>) : seq<Edge<'a>> =
+        entries 
+        |> Seq.collect (fun ((src, _) as ale) -> 
+            if src = vertex
+            then AdjacencyListEntry.edges ale
+            else Seq.empty
+        )
+    let allEdges (AdjacencyList entries : DirectedGraph<'a>) : seq<Edge<'a>> =
+        entries |> Seq.collect AdjacencyListEntry.edges
+    let allEdgesTo (vertex : 'a) : DirectedGraph<'a> -> seq<Edge<'a>> =
+        allEdges >> Seq.filter (fun e -> Edge.destination e = vertex)
+    // not required or finished
+    let isConnected _ = true
+    // not required or finished
+    let bypass (u : 't, v : 't, w : 't) (g : DirectedGraph<'t>) : DirectedGraph<'t> =
+        g
     let grades<'a when 'a : comparison> (AdjacencyList entries : DirectedGraph<'a> as graph) : Map<'a, Grade> =
         let grades = 
             entries
@@ -177,12 +196,6 @@ module DirectedGraph =
                 | None -> Map.add dst { InGrade = 1; OutGrade = 0 } gradesPrime
             )
             grades
-    let edges (vertex : 'a) (AdjacencyList entries : DirectedGraph<'a>) : list<Edge<'a>> =
-        entries
-        |> List.tryFind (fun (src, _) -> src = vertex)
-        |> Option.map (fun (src, dsts) -> dsts |> List.map (fun dst -> src, dst))
-        |> Option.toList
-        |> List.collect id
     let add (src : 'a, dst : 'a) (AdjacencyList entries : DirectedGraph<'a>) : DirectedGraph<'a> =
         let zero = (false, [])
         let folder ((added : bool), (entriesPrime : list<'a * list<'a>>)) (srci : 'a, dstsi : list<'a>) : bool * list<'a * list<'a>> =
@@ -282,21 +295,25 @@ let eulerPath (graph : DirectedGraph<'a>) : Walk<'a> =
     let i = ws |> Seq.findIndex ((=)dst)
     Walk.rotate i walk
 
+// not required or finished
 let allEulerianCycles (graph : DirectedGraph<'a>) : seq<Walk<'a>> = 
     let eulerize (g : DirectedGraph<'a>) =
-        [g]
         let grades = DirectedGraph.grades g
-        if grades |> Map.toSeq |> Seq.map snd |> Seq.forall ((=){InGrade=1;OutGrade=1})
-        then [g]
-        else
-            
-    let graphs =
-        [graph]
-        |> List.collect (eulerize)
-
-    graph |> List.map eulerCycle
-
-
+        match grades |> Map.tryFindKey (fun _ v -> v.InGrade > 1) with
+        | Some v ->
+            DirectedGraph.allEdgesTo v g
+            |> Seq.collect (fun (u, _) ->
+                DirectedGraph.allEdgesFrom v g
+                |> Seq.collect (fun (_, w) ->
+                    let bypass = DirectedGraph.bypass (u, v, w) g
+                    if DirectedGraph.isConnected bypass
+                    then [bypass]
+                    else []
+                )
+            )
+        | None -> Seq.singleton g
+    let graphs = [graph] |> Seq.collect eulerize |> Seq.toList
+    graphs |> Seq.map eulerCycle
 
 let pathToGenome (walk : Walk<seq<'a>>) : seq<'a> =
     let kmers = Walk.toArray walk
@@ -379,7 +396,7 @@ let stringSpelledByReadPairs
 
 let walkNonBranchingPaths (grades : Map<'a, Grade>) (graph : DirectedGraph<'a>) (vertex : 'a) :
     DirectedGraph<'a> * list<Walk<'a>> = 
-    let dstEdges = DirectedGraph.edges vertex graph
+    let dstEdges = DirectedGraph.allEdgesFrom vertex graph |> Seq.toList
     let rec stepWithinDstEdge (graph : DirectedGraph<'a>, acc : Walk<'a>) : DirectedGraph<'a> * Walk<'a> =
         match Walk.lastNode acc with
         | Some src -> 
@@ -457,14 +474,14 @@ let stringReconstructionFromReadPairs
     (reconstructable : Reconstructable<'t, 'a>)
     (k : int, d : int)
     (readPairs : seq<ReadPair<'t>>) 
-    
     : 't =
     let debruijn = deBruijnGraphGeneric debruijnable readPairs
-    let cycle = eulerCycle debruijn
+    // the book suggests all eulerian cycles are required in this step but just euerian walk seems to work fine
+    let cycle = eulerPath debruijn
     let reconstructed = 
         stringSpelledByReadPairs
             reconstructable
-            (k, d)
+            (k - 1, d + 1)
             (Walk.toSeq cycle)
     match reconstructed with
     | Some x -> x
@@ -555,7 +572,17 @@ let runContigGeneration (x : string) : string =
     let output = contigGeneration dnas 
     String.concat " " output
 
+let runStringReconstructionFromReadPairs (s : string) : string =
+    let k, d, pairs = readGappedPatterns s
+    let result =
+        stringReconstructionFromReadPairs
+            (DeBruijnable.Instances.mkReadPairString k)
+            (Reconstructable.Instances.string)
+            (k, d) 
+            (pairs |> Seq.map (ReadPair.map System.String))
+    result
+
 [<EntryPoint>] 
 let main argv =
-    runOnFile runContigGeneration """C:\src\BioinformaticsSpecialization\Course2\dataset_205_5.txt"""
+    runOnFile runStringReconstructionFromReadPairs """C:\src\BioinformaticsSpecialization\Course2\dataset_204_16.txt"""
     0
