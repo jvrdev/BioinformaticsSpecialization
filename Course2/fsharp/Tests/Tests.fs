@@ -1,11 +1,11 @@
 module Tests
 
+open Course2
 open NUnit.Framework
-open Program
+open Weeks1And2
 
 let areEqual (expected : 't) (actual : 't) =
     Assert.AreEqual (expected, actual)
-
 
 [<SetUp>]
 let Setup () =
@@ -55,14 +55,14 @@ let ``loop adjacency list`` () =
         3, [4]
         4, [0]
     ]
-    let (w, _) = walkUntilCycle graph (Walk [0])
+    let (w, _) = Euler.walkUntilCycle graph (Walk [0])
     let printedWalk = Walk.print string w
     printfn "%s" printedWalk
 
 [<Test>]
 let ``euler cycle`` () =
     let graph = DirectedGraph.parse int sampleText
-    let cycle = eulerCycle graph
+    let cycle = Euler.eulerCycle graph
     let printedWalk = Walk.print string cycle
     printfn "%s" printedWalk
 
@@ -100,7 +100,7 @@ let ``eulerian walk`` () =
      9 -> 6"""
     let graph = DirectedGraph.parse int text
 
-    let walk = eulerPath graph
+    let walk = Euler.eulerPath graph
 
     let expectedWalk = "6->7->8->9->6->3->0->2->1->3->4"
 
@@ -124,7 +124,7 @@ let ``debruijn graph`` () =
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
     let graph : DirectedGraph<string> = 
-        deBruijnGraphGeneric (DeBruijnable.Instances.mkString k) dnas
+        Debruijn.run (Debruijn.Instances.mkString k) dnas
         |> DirectedGraph.sort
     let expectedGraphText = """AGG -> GGG
     CAG -> AGG,AGG
@@ -146,7 +146,7 @@ let ``string reconstruction`` () =
      TTAC"""
 
     let k, dnas = readStringReconstruction text
-    let reconstructed = stringReconstruction k dnas
+    let reconstructed = Reconstruction.stringReconstruction k dnas
 
     areEqual "GGCTTACCA" reconstructed
 
@@ -182,7 +182,7 @@ let ``string spelled by gapped patterns`` () =
 
     let k, d, pairs = readGappedPatterns input
 
-    let actual = stringSpelledByReadPairs Reconstructable.Instances.array (k, d) pairs
+    let actual = stringSpelledByReadPairs Reconstruction.Instances.array (k, d) pairs
 
     areEqual (Some "GACCGAGCGCCGGA") (actual |> Option.map System.String)
 
@@ -250,8 +250,8 @@ GTCG|AGAT"""
     
     let actual =
         stringReconstructionFromReadPairs
-            (DeBruijnable.Instances.mkReadPairString k)
-            (Reconstructable.Instances.string)
+            (Debruijn.Instances.mkReadPairString k)
+            (Reconstruction.Instances.string)
             (k, d) 
             (pairs |> Seq.map (ReadPair.map System.String))
     
