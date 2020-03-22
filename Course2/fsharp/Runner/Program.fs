@@ -56,5 +56,5 @@ module Program =
 
     [<EntryPoint>] 
     let main argv =
-        runOnFile runStringReconstructionFromReadPairs """C:\src\BioinformaticsSpecialization\Course2\dataset_204_16.txt"""
+        runOnFile Week3.proteinTranslationS """C:\src\BioinformaticsSpecialization\Course2\dataset_96_4.txt"""
         0

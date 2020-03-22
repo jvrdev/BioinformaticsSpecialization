@@ -7,7 +7,8 @@
 
   <ItemGroup>
     <Compile Include="Prelude.fs" />
-    <Compile Include="Nucleobase.fs" />
+    <Compile Include="Bases.fs" />
+    <Compile Include="Aminoacid.fs" />
     <Compile Include="Grade.fs" />
     <Compile Include="Edge.fs" />
     <Compile Include="ReadPair.fs" />
@@ -17,6 +18,7 @@
     <Compile Include="Euler.fs" />
     <Compile Include="Reconstruction.fs" />
     <Compile Include="Weeks1And2.fs" />
+    <Compile Include="Week3.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

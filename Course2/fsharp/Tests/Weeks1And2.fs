@@ -1,4 +1,4 @@
-module Tests
+module Weeks1And2
 
 open Course2
 open NUnit.Framework
