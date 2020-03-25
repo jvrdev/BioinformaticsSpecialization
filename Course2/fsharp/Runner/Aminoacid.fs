@@ -159,4 +159,7 @@ UUU F
 module Peptide = 
     let toString : Peptide -> string = Seq.map Aminoacid.toChar >> Seq.toArray >> System.String
         
+    let length : Peptide -> int = Seq.length
 
+    let ofRna (x : Rna) : Peptide =
+        x |> Rna.toCodons |> Seq.choose Aminoacid.ofCodon
