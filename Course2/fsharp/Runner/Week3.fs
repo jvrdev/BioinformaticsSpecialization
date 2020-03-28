@@ -49,3 +49,23 @@ module Week3 =
                 |> Seq.map Dna.toString
                 |> String.concat System.Environment.NewLine
         | other -> failwithf "Invalid number of lines on input```\n%A\n```" other
+
+    let linerSpectrum (peptide : Peptide) : Spectrum =
+        let peptideLength = Peptide.length peptide
+        let prefixMass = 
+            peptide
+            |> Seq.fold
+                (fun (h::t) a -> (Aminoacid.integerMass a + h)::h::t)
+                [0]
+            |> List.rev
+            |> Seq.toArray
+        let spectrum = 
+            seq {
+                for i in 0 .. peptideLength - 1 do
+                    for j in i + 1 .. peptideLength do
+                        yield i, j
+            }
+            |> Seq.map (fun (i, j) -> prefixMass.[j] - prefixMass.[i])
+            |> Seq.toArray
+        Array.sortInPlace spectrum
+        seq spectrum

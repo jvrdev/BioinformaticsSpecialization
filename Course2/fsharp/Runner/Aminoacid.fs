@@ -24,9 +24,13 @@ type Aminoacid =
 
 type Peptide = seq<Aminoacid>
 
+type Spectrum = seq<int>
+
 module Aminoacid =
+    open System
+
     let ofChar =
-        System.Char.ToUpperInvariant
+        Char.ToUpperInvariant
         >> function 
         | 'H' -> Some Histidine
         | 'Q' -> Some Glutamine
@@ -49,6 +53,7 @@ module Aminoacid =
         | 'I' -> Some Isoleucine
         | 'M' -> Some Methionine
         | _ -> None
+
     let toChar =
         function
         | Histidine -> 'H'
@@ -71,6 +76,41 @@ module Aminoacid =
         | Arginine -> 'R'
         | Isoleucine -> 'I'
         | Methionine -> 'M'
+
+    let integerMass =
+        let map =
+            """G 57
+A 71
+S 87
+P 97
+V 99
+T 101
+C 103
+I 113
+L 113
+N 114
+D 115
+K 128
+Q 128
+E 129
+M 131
+H 137
+F 147
+R 156
+Y 163
+W 186"""
+            |> String.splitLines
+            |> Seq.map (fun line ->
+                match String.split " " line with
+                | [|letter; mass|] -> 
+                    match String.tryHead letter |> Option.bind ofChar, Int32.TryParse mass with
+                    | Some amino, (true, number) -> amino, number
+                    | _ -> failwithf "Unexpected line '%s'" line
+                | other -> failwithf "Unexpected line fields '%A'" other
+               )
+            |> Map.ofSeq
+
+        fun a -> Map.find a map
 
     let ofCodon : Codon -> option<Aminoacid> =
         let blob = """AAA K

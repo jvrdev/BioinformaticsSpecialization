@@ -22,4 +22,7 @@ module Prelude =
             s.Trim ()
 
         let ofSeq : seq<Char> -> String = Seq.toArray >> String
+
+        let tryHead (s : String) : option<char> = 
+            if s.Length > 0 then Some s.[0] else None
             
