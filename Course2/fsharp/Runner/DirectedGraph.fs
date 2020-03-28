@@ -44,14 +44,14 @@ module DirectedGraph =
         |> Seq.map (fun (a, b) -> sprintf "%s -> %s" (printElem a) (b |> Seq.map printElem |> String.concat ","))
         |> String.concat "\r\n"
     let parse (parseNode : string -> 'a) (s : string) : DirectedGraph<'a> =
-        let lines = splitLines s
+        let lines = String.splitLines s
         lines 
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.map (
-            trim
-            >> splitS " -> " 
+            String.trim
+            >> String.split " -> " 
             >> (function
-                | [|a;  b|] -> parseNode a, splitS "," b |> Seq.map parseNode |> Seq.toList
+                | [|a;  b|] -> parseNode a, String.split "," b |> Seq.map parseNode |> Seq.toList
                 | other -> failwithf "Invalid line format, fields were %A" other))
         |> Seq.toList
         |> AdjacencyList

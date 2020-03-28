@@ -18,6 +18,13 @@ module Base =
         | 'U' -> Some Uracil
         | _ -> None
 
+    let toChar = function 
+        | Adenosine -> 'A'
+        | Cytosine -> 'C'
+        | Guanine -> 'G'
+        | Thymine -> 'T'
+        | Uracil -> 'U'
+
     let transcribe = function
         | Uracil -> invalidArg "x" "Uracil is already transcribed"
         | Thymine -> Uracil
@@ -64,13 +71,28 @@ module Dna =
         |> Seq.rev
         |> Seq.map Base.complementDna
         |> Dna
-        
+       
+    let toString (Dna x) =
+        x
+        |> Seq.map Base.toChar
+        |> String.ofSeq
+
+    let parse (s : string) : option<Dna> =
+        let bases =
+            s
+            |> Seq.choose Base.ofChar
+            |> Seq.toArray
+
+        if bases.Length = s.Length
+        then   
+            Some <| mk bases
+        else None
 
 module Rna =
     let mk (x : seq<Base>) =
-            if not <| Seq.forall ((<>)Thymine) x
-            then invalidArg "x" "RNA cannot contain Thymine"
-            else Rna x
+        if not <| Seq.forall ((<>)Thymine) x
+        then invalidArg "x" "RNA cannot contain Thymine"
+        else Rna x
 
     let toCodons (Rna x) : seq<Codon> =
         x

@@ -37,8 +37,8 @@ module Program =
     let runContigGeneration (x : string) : string =
         let dnas = 
             x
-            |> splitLines
-            |> Seq.map trim
+            |> String.splitLines
+            |> Seq.map String.trim
             |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
             |> Seq.toArray
         let output = contigGeneration dnas 
@@ -56,5 +56,5 @@ module Program =
 
     [<EntryPoint>] 
     let main argv =
-        runOnFile Week3.proteinTranslationS """C:\src\BioinformaticsSpecialization\Course2\dataset_96_4.txt"""
+        runOnFile Week3.peptideEncodingS """C:\src\BioinformaticsSpecialization\Course2\dataset_96_7.txt"""
         0

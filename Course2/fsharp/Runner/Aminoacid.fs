@@ -139,7 +139,7 @@ UUG L
 UUU F
 """
         let table =
-            splitLines blob
+            String.splitLines blob
             |> Seq.choose (fun s -> 
                 if System.String.IsNullOrWhiteSpace s
                 then None
@@ -163,3 +163,8 @@ module Peptide =
 
     let ofRna (x : Rna) : Peptide =
         x |> Rna.toCodons |> Seq.choose Aminoacid.ofCodon
+
+    let parse (s : string) : option<Peptide> =
+        s
+        |> Seq.choose Aminoacid.ofChar
+        |> Some

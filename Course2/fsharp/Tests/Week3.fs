@@ -13,3 +13,14 @@ let ``protein translation problem`` () =
     let actual = Week3.proteinTranslationS rna
     areEqual "MAMAPRTEINSTRING" actual
 
+[<Test>]
+let ``peptide encoding problem`` () =
+    let s = """ATGGCCATGGCCCCCAGAACTGAGATCAATAGTACCCGTATTAACGGGTGA
+MA
+"""
+    let expected = """ATGGCC
+GGCCAT
+ATGGCC"""
+    let actual = Week3.peptideEncodingS s
+    areEqual expected actual
+

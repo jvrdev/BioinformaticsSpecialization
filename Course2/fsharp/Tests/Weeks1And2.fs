@@ -119,8 +119,8 @@ let ``debruijn graph`` () =
     let k = 4
     let dnas = 
         text
-        |> splitLines
-        |> Seq.map trim
+        |> String.splitLines
+        |> Seq.map String.trim
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
     let graph : DirectedGraph<string> = 
@@ -223,8 +223,8 @@ AGA"""
         
     let dnas = 
         text
-        |> splitLines
-        |> Seq.map trim
+        |> String.splitLines
+        |> Seq.map String.trim
         |> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         |> Seq.toArray
     let output = contigGeneration dnas 

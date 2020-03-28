@@ -154,8 +154,8 @@ module Weeks1And2 =
         |> seq
 
     let readStringReconstruction =
-        splitLines
-        >> Seq.map trim
+        String.splitLines
+        >> Seq.map String.trim
         >> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         >> Seq.toArray
         >> (fun x -> Array.head x |> int, Array.tail x)
@@ -166,8 +166,8 @@ module Weeks1And2 =
         | _ -> invalidArg "s" "unexpected number of | on input"
 
     let readGappedPatterns = 
-        splitLines
-        >> Seq.map trim
+        String.splitLines
+        >> Seq.map String.trim
         >> Seq.filter (not << System.String.IsNullOrWhiteSpace)
         >> Seq.toList
         >> function

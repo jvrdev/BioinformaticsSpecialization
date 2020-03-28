@@ -28,7 +28,7 @@ module Walk =
     let toArray<'t> : Walk<'t> -> 't[]  = toSeq >> Seq.toArray
     let parse (parseElem : string -> 'a) (s : string) : Walk<'a> =
         s
-        |> splitS " -> "
+        |> String.split " -> "
         |> Seq.map parseElem
         |> Seq.toList
         |> Walk
