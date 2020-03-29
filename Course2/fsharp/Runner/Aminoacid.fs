@@ -24,7 +24,11 @@ type Aminoacid =
 
 type Peptide = seq<Aminoacid>
 
-type Spectrum = seq<int>
+/// Peptide where we just know the masses (18) of each aminoacid instead of the aminoacids (20) themselves.
+/// Useful when sequencing.
+type MassPeptide = MassPeptide of list<int>
+
+type Spectrum = Spectrum of seq<int>
 
 module Aminoacid =
     open System
@@ -223,37 +227,38 @@ module Spectrum =
             | false, _ -> None
             | true, i -> Some i)
         |> Seq.toArray
-        |> seq
-        |> Some
+        |> (Some << Spectrum << seq)
 
+    let render (Spectrum s) : string =
+        s |> Seq.map string |> String.concat " "
 
-    let isCompatible (reference : Spectrum) =
+    let isCompatible (Spectrum reference) =
         let sortSpectrum =
             Seq.groupBy id
             >> Seq.map (fun (mass, masses) -> mass, Seq.length masses)
         let map = sortSpectrum reference |> Map.ofSeq
-        printfn "%1024A" map
-        fun (s : Spectrum) ->
-            let sSorted = sortSpectrum s |> Map.ofSeq
-            if Seq.length sSorted = 4 then printfn "%A" sSorted
-            let compatible = 
-                sSorted
-                |> Seq.forall (fun kvp -> 
-                    let (mass, count) = kvp.Key, kvp.Value
-                    match map |> Map.tryFind mass with
-                    | Some referenceCount -> referenceCount >= count
-                    | None -> false
-                )
-            if Seq.length sSorted = 4 then 
-                printfn "%s %1024A" (if compatible then "Yes" else "No ") map
-            compatible
+        fun (Spectrum s) ->
+            sortSpectrum s
+            |> Seq.forall (fun (mass, count)  -> 
+                match map |> Map.tryFind mass with
+                | Some referenceCount -> referenceCount >= count
+                | None -> false
+            )
 
-    let isEqualToSortedSpectrum (reference : Spectrum) =
+    let isEqualToSortedSpectrum (Spectrum reference) =
         let sortedReference =
             reference
             |> Seq.sort
             |> Seq.toArray
-        fun (sorted : Spectrum) ->
+        fun (Spectrum sorted) ->
             sequenceEquals
                 sortedReference
                 sorted
+
+    let parentMass (Spectrum spectrum) = Seq.max spectrum
+
+module MassPeptide = 
+    let empty = MassPeptide []
+    let toSeq (MassPeptide x) = Seq.ofList x
+    let totalMass (MassPeptide x) = List.sum x
+    let render (MassPeptide x) = x |> Seq.map string |> String.concat "-"

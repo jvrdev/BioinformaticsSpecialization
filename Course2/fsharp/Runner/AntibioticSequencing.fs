@@ -38,9 +38,10 @@ module AntibioticSequencing =
         |> List.rev
         |> Seq.toArray
 
-    let linearSpectrum (peptide : Peptide) : Spectrum =
-        let peptideLength = Peptide.length peptide
-        let prefixMass = mkPrefixMass Aminoacid.integerMass peptide
+    let linearSpectrum (mass : 'e -> int, toSeq : 'c -> seq<'e>) (peptideC : 'c) : Spectrum =
+        let peptide = toSeq peptideC
+        let peptideLength = Seq.length peptide
+        let prefixMass = mkPrefixMass mass peptide
         let spectrum = 
             Seq.singleton 0
             |> Seq.append (
@@ -52,9 +53,12 @@ module AntibioticSequencing =
             )            
             |> Seq.toArray
         Array.sortInPlace spectrum
-        seq spectrum
+        Spectrum <| seq spectrum
 
-    let cyclicSpectrum mass peptide : Spectrum =
+    let linearSpectrumMassPeptide = linearSpectrum (id, MassPeptide.toSeq)
+
+    let cyclicSpectrum (mass : 'e -> int, toSeq : 'c -> seq<'e>) (peptideC : 'c) : Spectrum =
+        let peptide = toSeq peptideC
         let peptideLength = Seq.length peptide
         let prefixMass = mkPrefixMass mass peptide
         let peptideMass = Array.last prefixMass
@@ -71,7 +75,9 @@ module AntibioticSequencing =
             )            
             |> Seq.toArray
         Array.sortInPlace spectrum
-        seq spectrum
+        Spectrum <| seq spectrum
+
+    let cyclicSpectrumMassPeptide = cyclicSpectrum (id, MassPeptide.toSeq)
 
     let peptideCountWithMass (x : int) =
         let stepCache = Array.zeroCreate (x + 1)
@@ -98,10 +104,10 @@ module AntibioticSequencing =
     let subpeptideCountLinear (n : int) =
         seq { 1 .. n } |> Seq.fold (+) 1 
 
-    let cyclopeptideSequencing (s : Spectrum) : list<list<int>> =
+    let cyclopeptideSequencing (s : Spectrum) : list<MassPeptide> =
         let isCompatible = Spectrum.isCompatible s
         let isEqual = Spectrum.isEqualToSortedSpectrum s
-        let spectrumParentMass = s |> Seq.max
+        let spectrumParentMass = Spectrum.parentMass s
         let masses = 
             Aminoacid.all 
             |> Seq.map Aminoacid.integerMass
@@ -109,30 +115,31 @@ module AntibioticSequencing =
             |> Seq.sort
             |> Seq.toList
 
-        let candidates0 : list<list<int>> = [ [] ]
-        let finals0 : list<list<int>> = [ ]
+        let candidates0 : list<MassPeptide> = [ MassPeptide.empty ]
+        let finals0 : list<MassPeptide> = [ ]
 
-        let rec expand (candidates : list<list<int>>) (finals : list<list<int>>) : list<list<int>> =
+        let rec expand (candidates : list<MassPeptide>) (finals : list<MassPeptide>) : list<MassPeptide> =
             if List.isEmpty candidates
             then finals
             else 
                 let candidatesPrime =
                     candidates
-                    |> List.collect (fun c -> masses |> List.map (fun m -> m::c))
+                    |> List.collect (fun (MassPeptide c) -> masses |> List.map (fun m -> MassPeptide (m::c)))
                 bound candidatesPrime finals
-        and bound (candidates : list<list<int>>) (finals : list<list<int>>) : list<list<int>> =
+        and bound (candidates : list<MassPeptide>) (finals : list<MassPeptide>) : list<MassPeptide> =
             let candidatesPrime, finalsPrime =
                 candidates
                 |> List.fold
                     (fun (cs, fs) candidate ->
-                        let candidateSpectrum = cyclicSpectrum id candidate
-                        let candidateMass = List.sum candidate
+                        let candidateMass = MassPeptide.totalMass candidate
                         if candidateMass = spectrumParentMass
                         then
-                            let spectrumsMatch = isEqual candidateSpectrum
+                            let candidateCyclicSpectrum = cyclicSpectrumMassPeptide candidate
+                            let spectrumsMatch = isEqual candidateCyclicSpectrum
                             if spectrumsMatch then cs, candidate::fs else cs, fs
                         else
-                            let spectrumsCompatible = isCompatible candidateSpectrum
+                            let linearCandidateSpectrum = linearSpectrumMassPeptide candidate
+                            let spectrumsCompatible = isCompatible linearCandidateSpectrum
                             if spectrumsCompatible then candidate::cs, fs else cs, fs
                       )
                     ([], finals)

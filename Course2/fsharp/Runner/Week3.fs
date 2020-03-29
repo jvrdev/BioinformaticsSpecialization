@@ -27,11 +27,11 @@ module Week3 =
         match Peptide.parse s with
         | Some p -> 
             let spectrum = f p
-            spectrum |> Seq.map string |> String.concat " "
+            Spectrum.render spectrum 
         | None -> failwithf "Peptide could not be read from '%s'" s
 
-    let linearSpectrumS = spectrumS linearSpectrum
-    let cyclicSpectrumS = spectrumS (cyclicSpectrum Aminoacid.integerMass)
+    let linearSpectrumS = spectrumS (linearSpectrum (Aminoacid.integerMass, id))
+    let cyclicSpectrumS = spectrumS (cyclicSpectrum (Aminoacid.integerMass, id))
 
     let cyclopeptideSequencingS (s : string) : string = 
         match Spectrum.parse s with
@@ -39,6 +39,6 @@ module Week3 =
         | Some spectrum -> 
             let candidates = cyclopeptideSequencing spectrum
             candidates
-            |> Seq.map (fun c -> c |> Seq.map string |> String.concat "-")
-            |> Seq.sortDescending
+            |> Seq.map MassPeptide.render
+            |> Seq.sort
             |> String.concat " "
