@@ -56,5 +56,5 @@ module Program =
 
     [<EntryPoint>] 
     let main argv =
-        runOnFile Week3.peptideEncodingS """C:\src\BioinformaticsSpecialization\Course2\dataset_96_7.txt"""
+        runOnFile Week3.cyclopeptideSequencingS """C:\src\BioinformaticsSpecialization\Course2\dataset_100_6.txt"""
         0

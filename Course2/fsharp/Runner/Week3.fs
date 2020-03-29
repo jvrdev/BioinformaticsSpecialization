@@ -1,39 +1,12 @@
 ﻿namespace Course2
 
 module Week3 =
-    let proteinTranslation (pattern : seq<Base>) : Peptide =
-        pattern
-        |> Seq.chunkBySize 3
-        |> Seq.choose (fun a ->
-            match Codon.ofArray a with
-            | Some codon ->
-                Aminoacid.ofCodon codon
-            | None -> None
-        )
+    open AntibioticSequencing
 
     let proteinTranslationS (s : string) : string =
         let pattern = s |> Seq.choose Base.ofChar
         let peptide = proteinTranslation pattern
         Peptide.toString peptide
-
-    // returns the substrings of DNA that encode Peptide
-    let peptideEncoding (dna : Dna) (peptide : Peptide) : seq<Dna> =
-        let peptideLength = Peptide.length peptide
-        let substringsEncodingPeptide (Dna d) =
-            d 
-            |> Seq.windowed (peptideLength * 3)
-            |> Seq.choose (fun chunk ->
-                let dna = Dna.mk chunk
-                let dnaR = Dna.reverseComponent dna
-                let rna = Dna.transcribe dna
-                let rnaR = Dna.transcribe dnaR
-                let p = Peptide.ofRna rna
-                let pr = Peptide.ofRna rnaR
-                if sequenceEquals peptide p || sequenceEquals peptide pr
-                then Some dna
-                else None
-            )
-        substringsEncodingPeptide dna
 
     let peptideEncodingS (s : string) : string =
         match String.splitLines s |> Array.filter (not << System.String.IsNullOrWhiteSpace) with
@@ -50,22 +23,22 @@ module Week3 =
                 |> String.concat System.Environment.NewLine
         | other -> failwithf "Invalid number of lines on input```\n%A\n```" other
 
-    let linerSpectrum (peptide : Peptide) : Spectrum =
-        let peptideLength = Peptide.length peptide
-        let prefixMass = 
-            peptide
-            |> Seq.fold
-                (fun (h::t) a -> (Aminoacid.integerMass a + h)::h::t)
-                [0]
-            |> List.rev
-            |> Seq.toArray
-        let spectrum = 
-            seq {
-                for i in 0 .. peptideLength - 1 do
-                    for j in i + 1 .. peptideLength do
-                        yield i, j
-            }
-            |> Seq.map (fun (i, j) -> prefixMass.[j] - prefixMass.[i])
-            |> Seq.toArray
-        Array.sortInPlace spectrum
-        seq spectrum
+    let spectrumS f (s : string) : string =
+        match Peptide.parse s with
+        | Some p -> 
+            let spectrum = f p
+            spectrum |> Seq.map string |> String.concat " "
+        | None -> failwithf "Peptide could not be read from '%s'" s
+
+    let linearSpectrumS = spectrumS linearSpectrum
+    let cyclicSpectrumS = spectrumS (cyclicSpectrum Aminoacid.integerMass)
+
+    let cyclopeptideSequencingS (s : string) : string = 
+        match Spectrum.parse s with
+        | None -> failwithf "Spectrum cannot be read %s'" s
+        | Some spectrum -> 
+            let candidates = cyclopeptideSequencing spectrum
+            candidates
+            |> Seq.map (fun c -> c |> Seq.map string |> String.concat "-")
+            |> Seq.sortDescending
+            |> String.concat " "

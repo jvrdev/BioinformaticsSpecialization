@@ -29,6 +29,11 @@ type Spectrum = seq<int>
 module Aminoacid =
     open System
 
+    let all = 
+        Microsoft.FSharp.Reflection.FSharpType.GetUnionCases(typeof<Aminoacid>)
+        |> Seq.map (fun x -> Microsoft.FSharp.Reflection.FSharpValue.MakeUnion(x, Array.zeroCreate(x.GetFields().Length)) :?> Aminoacid)
+        |> Seq.toArray
+
     let ofChar =
         Char.ToUpperInvariant
         >> function 
@@ -208,3 +213,47 @@ module Peptide =
         s
         |> Seq.choose Aminoacid.ofChar
         |> Some
+
+module Spectrum =
+    let parse (s : string) : option<Spectrum> =
+        s
+        |> String.split " "
+        |> Seq.choose (fun x -> 
+            match System.Int32.TryParse x with
+            | false, _ -> None
+            | true, i -> Some i)
+        |> Seq.toArray
+        |> seq
+        |> Some
+
+
+    let isCompatible (reference : Spectrum) =
+        let sortSpectrum =
+            Seq.groupBy id
+            >> Seq.map (fun (mass, masses) -> mass, Seq.length masses)
+        let map = sortSpectrum reference |> Map.ofSeq
+        printfn "%1024A" map
+        fun (s : Spectrum) ->
+            let sSorted = sortSpectrum s |> Map.ofSeq
+            if Seq.length sSorted = 4 then printfn "%A" sSorted
+            let compatible = 
+                sSorted
+                |> Seq.forall (fun kvp -> 
+                    let (mass, count) = kvp.Key, kvp.Value
+                    match map |> Map.tryFind mass with
+                    | Some referenceCount -> referenceCount >= count
+                    | None -> false
+                )
+            if Seq.length sSorted = 4 then 
+                printfn "%s %1024A" (if compatible then "Yes" else "No ") map
+            compatible
+
+    let isEqualToSortedSpectrum (reference : Spectrum) =
+        let sortedReference =
+            reference
+            |> Seq.sort
+            |> Seq.toArray
+        fun (sorted : Spectrum) ->
+            sequenceEquals
+                sortedReference
+                sorted

@@ -17,6 +17,7 @@
     <Compile Include="Debruijn.fs" />
     <Compile Include="Euler.fs" />
     <Compile Include="Reconstruction.fs" />
+    <Compile Include="AntibioticSequencing.fs" />
     <Compile Include="Weeks1And2.fs" />
     <Compile Include="Week3.fs" />
     <Compile Include="Program.fs" />
