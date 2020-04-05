@@ -1,6 +1,19 @@
 ﻿namespace Course2
 
 module AntibioticSequencing =
+    type Peptideable<'c, 'e> = {
+        Mass : 'e -> int
+        ToSeq : 'c -> seq<'e>
+    }
+
+    module Peptideable =
+        module Instances =
+            let peptide : Peptideable<Peptide, Aminoacid> = 
+                { Mass = Aminoacid.integerMass; ToSeq = id }
+
+            let massPeptide : Peptideable<MassPeptide, int> = 
+                { Mass = id; ToSeq = MassPeptide.toSeq }
+
     let proteinTranslation (pattern : seq<Base>) : Peptide =
         pattern
         |> Seq.chunkBySize 3
@@ -38,7 +51,7 @@ module AntibioticSequencing =
         |> List.rev
         |> Seq.toArray
 
-    let linearSpectrum (mass : 'e -> int, toSeq : 'c -> seq<'e>) (peptideC : 'c) : Spectrum =
+    let linearSpectrum { Mass = mass ; ToSeq = toSeq } (peptideC : 'c) : Spectrum =
         let peptide = toSeq peptideC
         let peptideLength = Seq.length peptide
         let prefixMass = mkPrefixMass mass peptide
@@ -55,9 +68,10 @@ module AntibioticSequencing =
         Array.sortInPlace spectrum
         Spectrum <| seq spectrum
 
-    let linearSpectrumMassPeptide = linearSpectrum (id, MassPeptide.toSeq)
+    let linearSpectrumPeptide = linearSpectrum Peptideable.Instances.peptide
+    let linearSpectrumMassPeptide = linearSpectrum Peptideable.Instances.massPeptide
 
-    let cyclicSpectrum (mass : 'e -> int, toSeq : 'c -> seq<'e>) (peptideC : 'c) : Spectrum =
+    let cyclicSpectrum { Mass = mass ; ToSeq = toSeq } (peptideC : 'c) : Spectrum =
         let peptide = toSeq peptideC
         let peptideLength = Seq.length peptide
         let prefixMass = mkPrefixMass mass peptide
@@ -77,8 +91,9 @@ module AntibioticSequencing =
         Array.sortInPlace spectrum
         Spectrum <| seq spectrum
 
-    let cyclicSpectrumMassPeptide = cyclicSpectrum (id, MassPeptide.toSeq)
-
+    let cyclicSpectrumPeptide = cyclicSpectrum Peptideable.Instances.peptide
+    let cyclicSpectrumMassPeptide = cyclicSpectrum Peptideable.Instances.massPeptide
+    
     let peptideCountWithMass (x : int) =
         let stepCache = Array.zeroCreate (x + 1)
         let masses = 
@@ -146,4 +161,31 @@ module AntibioticSequencing =
             expand candidatesPrime finalsPrime
 
         expand candidates0 finals0
-                
+
+    let linearScore peptideable peptide spectrum =
+        let actualSpectrum = linearSpectrum peptideable peptide
+        Spectrum.score actualSpectrum spectrum
+    
+    let linearScorePeptide = linearScore Peptideable.Instances.peptide
+    let cyclicScorePeptide (peptide : Peptide) (spectrum : Spectrum) : int =
+        let actual = cyclicSpectrumPeptide peptide
+        Spectrum.score actual spectrum    
+
+    let trim 
+        (peptideable: Peptideable<'peptide,'e>)
+        (leaderboard : seq<'peptide>)
+        (spectrum : Spectrum)
+        (n : int) : seq<'peptide> =
+        leaderboard
+        |> Seq.map (fun peptide -> peptide, linearScore peptideable peptide spectrum)
+        |> Seq.sortByDescending snd
+        |> Seq.fold 
+            (fun (peptides, length, minScoreWanted) (peptide, score) ->
+                if length >= n
+                then 
+                    if score = minScoreWanted 
+                    then peptide :: peptides, length + 1, score
+                    else peptides, length, minScoreWanted
+                else peptide :: peptides, length + 1, score)
+            ([], 0, System.Int32.MaxValue)
+        |> fun (peptides, _, _) -> peptides |> List.rev |> Seq.ofList

@@ -232,10 +232,22 @@ module Spectrum =
     let render (Spectrum s) : string =
         s |> Seq.map string |> String.concat " "
 
+    let internal sortSpectrum =
+        Seq.groupBy id
+        >> Seq.map (fun (mass, masses) -> mass, Seq.length masses)
+
+    let score (Spectrum reference) =
+        let map = reference |> sortSpectrum |> Map.ofSeq
+        fun (Spectrum candidate) ->
+            candidate
+            |> sortSpectrum
+            |> Seq.sumBy (fun (mass, count) ->
+                match map |> Map.tryFind mass with
+                | Some actualCount -> System.Math.Min (count, actualCount)
+                | None -> 0
+            )
+
     let isCompatible (Spectrum reference) =
-        let sortSpectrum =
-            Seq.groupBy id
-            >> Seq.map (fun (mass, masses) -> mass, Seq.length masses)
         let map = sortSpectrum reference |> Map.ofSeq
         fun (Spectrum s) ->
             sortSpectrum s

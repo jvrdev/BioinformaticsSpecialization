@@ -30,8 +30,8 @@ module Week3 =
             Spectrum.render spectrum 
         | None -> failwithf "Peptide could not be read from '%s'" s
 
-    let linearSpectrumS = spectrumS (linearSpectrum (Aminoacid.integerMass, id))
-    let cyclicSpectrumS = spectrumS (cyclicSpectrum (Aminoacid.integerMass, id))
+    let linearSpectrumS = spectrumS (linearSpectrum Peptideable.Instances.peptide)
+    let cyclicSpectrumS = spectrumS (cyclicSpectrum Peptideable.Instances.peptide)
 
     let cyclopeptideSequencingS (s : string) : string = 
         match Spectrum.parse s with

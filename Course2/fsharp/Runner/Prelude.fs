@@ -25,4 +25,3 @@ module Prelude =
 
         let tryHead (s : String) : option<char> = 
             if s.Length > 0 then Some s.[0] else None
-            
